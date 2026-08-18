@@ -1,0 +1,14 @@
+services:
+  beets-jar:
+    build: .
+    container_name: beets-jar
+    restart: unless-stopped
+    ports:
+      - "7734:7734"
+    environment:
+      - BEETSDIR=/app/data
+    volumes:
+      - ./dev/data:/app/data
+      - ./dev/downloads:/downloads
+      - ./dev/music:/music
+      - ./beetsplug:/custom-plugins

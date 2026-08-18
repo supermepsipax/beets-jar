@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import sys
+from beets import config
+from beets.library import Library
+
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: migrate-paths <old-prefix>")
+        print("Example: migrate-paths /home/username/beetz")
+        sys.exit(1)
+
+    old_prefix = sys.argv[1].encode()
+
+    lib_path = config["library"].as_filename()
+    new_dir = config["directory"].as_filename().encode()
+
+    lib = Library(lib_path, directory=config["directory"].as_filename())
+
+    item_count = 0
+    album_count = 0
+
+    with lib.transaction():
+        print(f"Migrating {len(lib.items())} item paths")
+        for item in lib.items():
+            if item.path.startswith(old_prefix):
+                item.path = item.path.replace(old_prefix, new_dir, 1)
+                item.store()
+                item_count += 1
+        for album in lib.albums():
+            if album.artpath and album.artpath.startswith(old_prefix):
+                album.artpath = album.artpath.replace(old_prefix, new_dir, 1)
+                album.store()
+                album_count += 1
+
+    print(f"Done. Updated {item_count} items and {album_count} albums")
+
+if __name__ == "__main__":
+    main()
