@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{% block title %}Beets Jar{% endblock %}</title>
+	<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-alpha6/dist/htmx.min.js"></script>
+	<script src="//unpkg.com/alpinejs" defer></script>
+</head>
+
+<body>
+	{% block nav %}
+	<nav>
+		<div>
+			<div>
+				<div>
+					<img src="/static/favicon.svg" class="w-10 h-10">
+					<a href="/library">
+						Beets-Jar
+					</a>
+				</div>
+				<div class>
+					<a href="/library" class="nav-link">Library</a>
+					<a href="/import" class="nav-link">Import</a>
+					<a href="/settings" class="nav-link">Settings</a>
+				</div>
+			</div>
+		</div>
+	</nav>
+	{% endblock %}
+
+	<main>
+		{% block content %}{% endblock %}
+	</main>
+
+</body>
+
+</html>
+
