@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#TODO: as of beets 2.10.0 paths are stored in db as relative to library path set in config so this is no longer necessary
+
 import sys
 from beets import config
 from beets.library import Library

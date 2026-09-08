@@ -3,4 +3,17 @@
 {% block title %}Library - Beets-Jar{% endblock %}
 
 {% block content %}
+<label>Item Count: {{ item_count }}</label>
+<label>Album Count: {{ album_count }}</label>
+<form 
+	hx-get="/api/items" 
+	hx-trigger="input delay:300ms, change target:input[type='checkbox']" 
+	hx-target="#results">
+	<label for="text">Query: </label>
+	<input type="text" name="query" value=""><br>
+	<label for="album">Show Only Albums: </label>
+	<input type="checkbox" name="album"><br>
+</form>
+<div id="results">
+</div>
 {% endblock %}

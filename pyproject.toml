@@ -11,3 +11,11 @@ dependencies = [
     "python-multipart>=0.0.32",
     "uvicorn>=0.52.3",
 ]
+[tool.jinja-lsp]
+templates = "./app/templates"
+backend = ["./app/routers"]
+
+[dependency-groups]
+dev = [
+    "watchfiles>=1.0.5",
+]

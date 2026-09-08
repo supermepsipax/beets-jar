@@ -1,3 +1,7 @@
+from beets.dbcore import Results
+from typing import Optional
+from beets.library import Library, Album, Item
+from app import get_lib
 import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
@@ -14,17 +18,49 @@ async def index(
     return RedirectResponse(url="/library", status_code=302)
 
 @router.get("/library", response_class=HTMLResponse)
-async def search_page(
+async def library_page(
     request: Request,
-    # db: AsyncSession = Depends(get_db),
+    lib: Library = Depends(get_lib),
 ):
     """Main library page."""
+    # for item in lib.items():
+    #     logger.info(item)
+    # for album in lib.albums():
+    #     logger.info(album)
 
     response = templates.TemplateResponse(
         request,
         "library.html",
         {
+            "item_count": len(lib.items()),
+            "album_count": len(lib.albums()),
         },
+
     )
     return response
 
+@router.get("/api/items", response_class=HTMLResponse)
+async def get_items(
+    request: Request,
+    lib: Library = Depends(get_lib),
+    query: str = "",
+    album: str | None = None,
+):
+    """Main library page."""
+
+    show_only_albums = album is not None
+
+    if show_only_albums:
+        results: Results[Album] = lib.albums(query)
+    else:
+        results: Results[Item] = lib.items(query)
+
+    response = templates.TemplateResponse(
+        request,
+        "partials/items.html",
+        {
+            "items": results,
+        },
+
+    )
+    return response
