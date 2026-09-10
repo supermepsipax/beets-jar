@@ -1,3 +1,4 @@
+import enum
 import asyncio
 import uuid
 import threading
@@ -5,11 +6,16 @@ from beets.util import PromptChoice
 from beets.importer import ImportTask
 from queue import Queue
 
+class QueueStorageType(str, enum.Enum):
+    CANDIDATE = "candidate"
+    DUPLICATE = "duplicate"
+
 class QueueStorageItem:
-    def __init__(self, task: ImportTask | None = None, choices: list[PromptChoice] | None = None):
+    def __init__(self, task: ImportTask | None = None, choices: list[PromptChoice] | None = None, queue_type:QueueStorageType = QueueStorageType.CANDIDATE):
         self.queue = Queue()
         self.task = task
         self.choices = choices
+        self.queue_type = queue_type
 
 
 class QueueStorage:

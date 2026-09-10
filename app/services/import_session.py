@@ -1,8 +1,8 @@
 from __future__ import annotations
+from app.models.queues import QueueStorageType
+import uuid
 from app.models import QueueStorage, QueueStorageItem, WebChoice, ChoiceType
 from beets.exceptions import UserError
-
-import queue
 
 from collections import Counter
 from itertools import chain
@@ -32,9 +32,14 @@ if TYPE_CHECKING:
 # Global logger.
 log = logging.getLogger("beets")
 
-
 class WebImportSession(importer.ImportSession):
-    """An import session that can run asynchronously."""
+    """
+    An import session that can be triggered and ran with another asynchronous process.
+
+    Goes through the normal import process but when user intervention is required, blocks
+    its main thread while it waits for a response. Responses are passed in via stored queue objects
+    based on unique identifiers.
+    """
 
     def __init__(self, *args, queues: QueueStorage, mbid: str = "", **kwargs):
         super().__init__(*args,  **kwargs)
@@ -53,8 +58,6 @@ class WebImportSession(importer.ImportSession):
         dance with the user to ask for a choice of metadata. Returns an
         AlbumMatch object, ASIS, or SKIP.
         """
-
-
         # Show what we're tagging.
         #TODO: Figure out how to hook into import_task_before_choice event to broadcast info
         prompt = f"{displayable_path(task.paths, "\n")} ({len(task.items)} items)"
@@ -89,7 +92,7 @@ class WebImportSession(importer.ImportSession):
 
         # Loop until we have a choice.
 
-        queue_item = QueueStorageItem(task)
+        queue_item = QueueStorageItem(task, queue_type=QueueStorageType.CANDIDATE)
         queue_id = self.queues.store(queue_item)
         self._queue_ids.append(queue_id)
 
@@ -100,6 +103,8 @@ class WebImportSession(importer.ImportSession):
             # `PromptChoice`.
             choices = self._get_choices(task)
             self.queues.update(queue_id, task, choices)
+
+            # WAIT FOR USER RESPONSE
             web_choice: WebChoice = queue_item.queue.get()
 
             # We have a specific match selection.
@@ -142,7 +147,6 @@ class WebImportSession(importer.ImportSession):
         """Ask the user for a choice about tagging a single item. Returns
         either an action constant or a TrackMatch object.
         """
-        print()
         print(displayable_path(task.item.path))
 
         # Take immediate action if appropriate.
@@ -154,37 +158,49 @@ class WebImportSession(importer.ImportSession):
             match = task.candidates[0]
             # TODO: introduce AlbumImportTask to remove this assertion
             assert isinstance(match, TrackMatch)
-            show_item_change(task.source, match)
+            # show_item_change(task.source, match)
             return match
         if action is not None:
             return action
 
+        queue_item = QueueStorageItem(task)
+        queue_id = self.queues.store(queue_item)
+        self._queue_ids.append(queue_id)
+
         while True:
             # Ask for a choice.
             choices = self._get_choices(task)
-            choice = choose_candidate(
-                # TODO: introduce AlbumImportTask to remove this ignore
-                task.candidates,  # type: ignore[arg-type]
-                task.rec,
-                task.source,
-                choices=choices,
-            )
+            self.queues.update(queue_id, task, choices)
+            web_choice: WebChoice = queue_item.queue.get()
+            # choice = choose_candidate(
+            #     # TODO: introduce AlbumImportTask to remove this ignore
+            #     task.candidates,  # type: ignore[arg-type]
+            #     task.rec,
+            #     task.source,
+            #     choices=choices,
+            # )
 
             # We have a specific match selection.
-            # or, basic choices that require no more action here.
-            if isinstance(choice, TrackMatch) or (
-                isinstance(choice, importer.Action)
-                and choice in (importer.Action.SKIP, importer.Action.ASIS)
+            # or, basic web_choice.choices that require no more action here.
+            if isinstance(web_choice.choice, TrackMatch) or (
+                isinstance(web_choice.choice, importer.Action)
+                and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
-                return choice
+                self.queues.delete(queue_id)
+                return web_choice.choice
 
-            # Plugin-provided choices. We invoke the associated callback
+            # Plugin-provided web_choice.choices. We invoke the associated callback
             # function.
-            if isinstance(choice, PromptChoice) and choice.callback:
-                post_choice = choice.callback(self, task)
+            if isinstance(web_choice.choice, PromptChoice) and web_choice.choice.callback:
+                if ChoiceType(web_choice.choice.short) == ChoiceType.SEARCH:
+                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["artist"], web_choice.follow_up_info["query"])
+                elif ChoiceType(web_choice.choice.short) == ChoiceType.ID:
+                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["mbid"])
+                else:
+                    post_choice = web_choice.choice.callback(self, task)
                 if isinstance(post_choice, importer.Action):
-                    return post_choice
+                    return post_choice.choice
 
     def _report_item_summary(
         self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool
@@ -201,28 +217,43 @@ class WebImportSession(importer.ImportSession):
         that's already in the library.
         """
         is_album = task.is_album
-        log.warning("This {.source.type} is already in the library!", task)
+        # log.warning("This {.source.type} is already in the library!", task)
 
         if config["import"]["quiet"]:
             # In quiet mode, don't prompt -- just skip.
             log.info("Skipping.")
             return "s"
+        choices = []
+        for action in DuplicateAction:
+            choice: PromptChoice = PromptChoice(action.value, action.text, None)
+            choices.append(choice)
+
+        queue_item = QueueStorageItem(task, choices, QueueStorageType.DUPLICATE)
+        queue_id = self.queues.store(queue_item)
+        self._queue_ids.append(queue_id)
+
+        web_choice: WebChoice = queue_item.queue.get()
+
+
+        assert isinstance(web_choice.choice, PromptChoice)
+            
         # Print some detail about the existing and new items so the
         # user can make an informed decision.
-        for duplicate in found_duplicates:
-            self._report_item_summary(
-                "Old",
-                (
-                    list(duplicate.items())
-                    if isinstance(duplicate, Album)
-                    else [duplicate]
-                ),
-                is_album,
-            )
+        # for duplicate in found_duplicates:
+        #     self._report_item_summary(
+        #         "Old",
+        #         (
+        #             list(duplicate.items())
+        #             if isinstance(duplicate, Album)
+        #             else [duplicate]
+        #         ),
+        #         is_album,
+        #     )
+        #
+        # self._report_item_summary("New", task.imported_items(), is_album)
 
-        self._report_item_summary("New", task.imported_items(), is_album)
-
-        return input_options(DuplicateAction.strict_options())
+        return web_choice.choice.short
+        # return input_options(DuplicateAction.strict_options())
 
     def get_duplicate_action(
         self, task: importer.ImportTask, found_duplicates: list[AlbumOrItem]
@@ -534,19 +565,6 @@ def choose_candidate(
         if sel in choice_actions:
             return choice_actions[sel]
 
-def manual_search(session, task):
-    """Get a new `Proposal` using manual search criteria.
-
-    Input either an artist and album (for full albums) or artist and
-    track name (for singletons) for manual search.
-    """
-    artist = input_("Artist:").strip()
-    name = input_("Album:" if task.is_album else "Track:").strip()
-
-    if task.is_album:
-        _, _, prop = tag_album(task.items, artist, name)
-        return prop
-    return tag_item(task.item, artist, name)
 
 def web_search(session, task, artist, name):
     """Get a new `Proposal` using manual search criteria.
@@ -569,19 +587,6 @@ def web_id(session, task, mbid):
         _, _, prop = tag_album(task.items, search_ids=mbid.split())
         return prop
     return tag_item(task.item, search_ids=mbid.split())
-
-def manual_id(session, task):
-    """Get a new `Proposal` using a manually-entered ID.
-
-    Input an ID, either for an album ("release") or a track ("recording").
-    """
-    prompt = f"Enter {'release' if task.is_album else 'recording'} ID:"
-    search_id = input_(prompt).strip()
-
-    if task.is_album:
-        _, _, prop = tag_album(task.items, search_ids=search_id.split())
-        return prop
-    return tag_item(task.item, search_ids=search_id.split())
 
 
 
@@ -782,6 +787,7 @@ def input_options(
 
         # Prompt for new input.
         resp = input_(fallback_prompt)
+
 
 
 

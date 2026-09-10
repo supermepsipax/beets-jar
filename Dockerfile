@@ -1,4 +1,5 @@
 FROM python:3.12-slim
+ENV PYTHONUNBUFFERED=1
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ffmpeg && \
     rm -rf /var/lib/apt/lists/*
@@ -18,8 +19,8 @@ RUN chmod +x /usr/local/bin/migrate-paths
 COPY app/ ./app/
 RUN mkdir -p /app/data
 EXPOSE 7734
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7734/api/health')" || exit 1
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+#     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7734/api/health')" || exit 1
 
 # Run
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7734"]

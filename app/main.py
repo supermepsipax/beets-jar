@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from beets import config as beets_config
 from beets.library import Library
 from app.routers import (
-    library_router, import_router,
+    library_router, import_router, configuration_router
 )
 from app.models import QueueStorage
 
@@ -28,8 +28,9 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(library_router)
 app.include_router(import_router)
+app.include_router(configuration_router)
 
 
-@app.get("/api/health")
-def health():
-    return {"status": "ok"}
+# @app.get("/api/health")
+# def health():
+#     return {"status": "ok"}

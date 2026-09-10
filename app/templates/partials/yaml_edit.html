@@ -1,0 +1,32 @@
+<div class="editor" id="yaml-edit" x-data="yamlEditor()">
+	<textarea 
+		name="yaml_text"
+		x-model="editable"
+		spellcheck="false"
+		wrap="off"
+		style="
+			width: 80%;
+			height: 70vh;
+			box-sizing: border-box;
+			font-family: monospace;
+		"
+	></textarea>
+	<label x-text="unsaved ? 'Unsaved changes': status_text"></label>
+    <button type="submit" :disabled="!unsaved">Save Configuration</button>
+</div>
+
+<!-- Trying to avoid script tags but its really hard to escape things properly in the config.yaml -->
+<script>
+      function yamlEditor() {
+		  const text = {{ yaml_text | tojson }};
+		  const status_text = {{ update_text | tojson }};
+              return {
+				  original: text,
+				  editable: text,
+				  status_text: status_text,
+				  get unsaved() {
+					  return this.editable !== this.original;
+                      }
+              };
+      }
+</script>

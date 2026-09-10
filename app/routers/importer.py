@@ -1,3 +1,4 @@
+from app.models.queues import QueueStorageType
 from app.models.web_choice import ChoiceType
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 import asyncio
@@ -98,24 +99,35 @@ async def make_import_choice(
     queue_item: QueueStorageItem | None = queues.get(queue_id)
     if queue_item is None:
         raise HTTPException(status_code=404, detail="Import not found")
-    elif type == "candidate":
-        index = int(value) -1
-        choice = queue_item.task.candidates[index]
-        web_choice = WebChoice(choice, {})
-    elif type == "action":
-        choice = next(
-                (c for c in queue_item.choices if c.short == value),
-                None,
-        )
-        if choice is None:
-            raise HTTPException(status_code=400, detail="Unknown action")
-        if ChoiceType(choice.short) == ChoiceType.ID and mbid:
-            web_choice = WebChoice(choice, {"mbid": mbid})
-            
-        elif ChoiceType(choice.short) == ChoiceType.SEARCH and artist and query:
-            web_choice = WebChoice(choice, {"artist": artist, "query": query})
-        else:
+    if queue_item.queue_type == QueueStorageType.CANDIDATE:
+        if type == "candidate":
+            index = int(value) -1
+            choice = queue_item.task.candidates[index]
             web_choice = WebChoice(choice, {})
+        elif type == "action":
+            choice = next(
+                    (c for c in queue_item.choices if c.short == value),
+                    None,
+            )
+            if choice is None:
+                raise HTTPException(status_code=400, detail="Unknown action")
+            if ChoiceType(choice.short) == ChoiceType.ID and mbid:
+                web_choice = WebChoice(choice, {"mbid": mbid})
+                
+            elif ChoiceType(choice.short) == ChoiceType.SEARCH and artist and query:
+                web_choice = WebChoice(choice, {"artist": artist, "query": query})
+            else:
+                web_choice = WebChoice(choice, {})
+    elif queue_item.queue_type == QueueStorageType.DUPLICATE:
+        if type == "action":
+            choice = next(
+                    (c for c in queue_item.choices if c.short == value),
+                    None,
+            )
+            if choice is None:
+                raise HTTPException(status_code=400, detail="Unknown action")
+            web_choice = WebChoice(choice, {})
+
     else:
         raise HTTPException(status_code=400, detail="Unknown type")
 
