@@ -1,4 +1,7 @@
 <div class="editor" id="yaml-edit" x-data="yamlEditor()">
+    <button type="submit" :disabled="!unsaved">Save Configuration</button>
+	<label x-text="unsaved ? 'Unsaved changes': status_text"></label>
+	<br>
 	<textarea 
 		name="yaml_text"
 		x-model="editable"
@@ -11,8 +14,6 @@
 			font-family: monospace;
 		"
 	></textarea>
-	<label x-text="unsaved ? 'Unsaved changes': status_text"></label>
-    <button type="submit" :disabled="!unsaved">Save Configuration</button>
 </div>
 
 <!-- Trying to avoid script tags but its really hard to escape things properly in the config.yaml -->

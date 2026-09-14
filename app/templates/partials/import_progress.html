@@ -1,73 +1,126 @@
-<div id="import-{{ queue_id }}">
-	<!-- <h3{{ path }} ({{ item_count }} items)</h3> -->
-	{% if item.queue_type == "candidate" %}
+<div id="import-{{ queue_id }}" class="import-card">
+	<header class="import-card-header">
+		<div>
+			<strong class="import-card-title">{{ path }}</strong>
+			<span class="import-card-subtitle">{{ item_count }} items</span>
+		</div>
+		<div class="import-card-header-actions">
+			{% for choice in item.choices %}
+			{% if choice.short == "s" or choice.short == "b" %}
+			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-swap="outerHTML">
+				<input type="hidden" name="type" value="action">
+				<input type="hidden" name="value" value="{{ choice.short }}">
+				<button type="submit" class="header-action" title="{{ choice.long }}">
+					{% if choice.short == "s" %}
+					→
+					{% else %}
+					×
+					{% endif %}
+				</button>
+			</form>
+			{% endif %}
+			{% endfor %}
+		</div>
+	</header>
+
+	<div class="import-card-body">
+		{% if item.queue_type == "candidate" %}
 		{% if item.task.candidates %}
-		<table>
+		<table class="candidate-table">
 			<thead>
 				<tr>
 					<th>#</th>
-					<th>Distance</th>
+					<th>Match</th>
 					<th>Artist -- Release</th>
-					<th></th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for candidate in item.task.candidates %}
-				<tr style="cursor: pointer;"
-					hx-confirm="Are you sure, {{ candidate.info.name }} is the correct option?"
-					hx-post="/api/import/{{ queue_id }}/choose"
-					hx-target="#import-{{ queue_id }}"
-					hx-include="this"
-					hx-swap="outerHTML"
-					hx-trigger:inherited-"click"
-					>
+				<tr class="candidate-row" hx-confirm="Are you sure, {{ candidate.info.name }} is the correct option?"
+					hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-include="this"
+					hx-swap="outerHTML" hx-trigger:inherited-"click" hx-vals='{
+						"type": "candidate",
+						"value": "{{ loop.index }}" 
+						  }'>
 
 					<td>{{ loop.index }}</td>
 					<td>{{ "%.1f%%"|format((1 - candidate.distance.distance) * 100) }}</td>
 					<td>{{ candidate.info.artist }} -- {{ candidate.info.name }}</td>
-					<input type="hidden" name="type" value="candidate">
-					<input type="hidden" name="value" value="{{ loop.index }}">
+					<!-- <input type="hidden" name="type" value="candidate"> -->
+					<!-- <input type="hidden" name="value" value="{{ loop.index }}"> -->
 				</tr>
 				{% endfor %}
 			</tbody>
 		</table>
 		{% else %}
-		<p>No matching releases found.</p>
+		<p class="no-results">No matching releases found.</p>
 		{% endif %}
 
-		<div>
+		<div class="import-actions">
 			{% for choice in item.choices %}
-			<form hx-post="/api/import/{{ queue_id }}/choose"
-				  hx-target="#import-{{ queue_id }}"
-				  hx-swap="outerHTML"
-				>
-				<input type="hidden" name="type" value="action">
-				<input type="hidden" name="value" value="{{ choice.short }}">
-				<button type="submit">{{ choice.long }}</button>
-				{% if choice.short == "e" %}
-				<input name="artist" placeholder="Artist">
-				<input name="query" placeholder="Album/Track">
-				{% elif choice.short == "i" %}
-				<input name="mbid" placeholder="MBID">
-				{% endif %}
-			</form>
-			{% endfor %}
-		</div>
-
-	{% elif item.queue_type == "duplicate" %}
-		<div>
-			{% for choice in item.choices %}
-			<form hx-post="/api/import/{{ queue_id }}/choose"
-				  hx-target="#import-{{ queue_id }}"
-				  hx-swap="outerHTML"
-				>
+			{% if choice.short not in ["s", "b", "e", "i"] %}
+			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-swap="outerHTML">
 				<input type="hidden" name="type" value="action">
 				<input type="hidden" name="value" value="{{ choice.short }}">
 				<button type="submit">{{ choice.long }}</button>
 			</form>
+			{% endif %}
 			{% endfor %}
 		</div>
-	{% endif %}
-</div>
+		<div class="manual-action">
+			{% for choice in item.choices %}
 
+			{% if choice.short == "e" %}
+			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}"
+				hx-swap="outerHTML">
+				<input type="hidden" name="type" value="action">
+				<input type="hidden" name="value" value="{{ choice.short }}">
 
+				<label>Manual search</label>
+
+				<div class="manual-action-row">
+					<input name="artist" placeholder="Artist">
+					<input name="query" placeholder="Album / Track">
+
+					<button type="submit">
+						{{ choice.long }}
+					</button>
+				</div>
+			</form>
+
+			{% elif choice.short == "i" %}
+			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}"
+				hx-swap="outerHTML">
+				<input type="hidden" name="type" value="action">
+				<input type="hidden" name="value" value="{{ choice.short }}">
+
+				<label>MusicBrainz ID</label>
+
+				<div class="manual-action-row">
+					<input name="mbid" placeholder="MBID">
+
+					<button type="submit">
+						{{ choice.long }}
+					</button>
+				</div>
+			</form>
+			{% endif %}
+
+			{% endfor %}
+
+		</div>
+		{% elif item.queue_type == "duplicate" %}
+
+		<div class="import-actions">
+			{% for choice in item.choices %}
+			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-swap="outerHTML">
+				<input type="hidden" name="type" value="action">
+				<input type="hidden" name="value" value="{{ choice.short }}">
+
+				<button type="submit">
+					{{ choice.long }}
+				</button>
+			</form>
+			{% endfor %}
+		{% endif %}
+		</div>

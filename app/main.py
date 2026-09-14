@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -25,6 +26,12 @@ async def lifespan(app: FastAPI):
     print('db closed')
 
 app = FastAPI(lifespan=lifespan)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
+)
 
 app.include_router(library_router)
 app.include_router(import_router)
