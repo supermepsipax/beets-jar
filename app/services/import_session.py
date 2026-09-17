@@ -6,8 +6,7 @@ from beets.exceptions import UserError
 
 from collections import Counter
 from itertools import chain
-from typing import TYPE_CHECKING, Literal
-
+from typing import TYPE_CHECKING, Literal, Iterator
 from beets import config, importer, logging, plugins, ui
 from beets.autotag import (
     AlbumMatch,
@@ -32,6 +31,7 @@ if TYPE_CHECKING:
 # Global logger.
 log = logging.getLogger("beets")
 
+
 class WebImportSession(importer.ImportSession):
     """
     An import session that can be triggered and ran with another asynchronous process.
@@ -43,6 +43,7 @@ class WebImportSession(importer.ImportSession):
 
     def __init__(self, *args, queues: QueueStorage, mbid: str = "", **kwargs):
         super().__init__(*args,  **kwargs)
+        self.session_id = uuid.uuid4().hex
         self.queues = queues
         self._queue_ids = []
 
@@ -60,8 +61,8 @@ class WebImportSession(importer.ImportSession):
         """
         # Show what we're tagging.
         #TODO: Figure out how to hook into import_task_before_choice event to broadcast info
-        prompt = f"{displayable_path(task.paths, "\n")} ({len(task.items)} items)"
-        print(prompt)
+        # prompt = f"{displayable_path(task.paths, "\n")} ({len(task.items)} items)"
+        # print(prompt)
 
         # Let plugins display info or prompt the user before we go through the
         # process of selecting candidate.
@@ -204,11 +205,12 @@ class WebImportSession(importer.ImportSession):
 
     def _report_item_summary(
         self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool
-    ) -> None:
-        print(f"{prefix}: {summarize_items(items, not is_album)}")
+    ) -> str:
+        summary_string = f"{prefix}: {summarize_items(items, not is_album)}"
         if self.config["duplicate_verbose_prompt"].get(bool):
             for dup in items:
-                print(f"  {dup}")
+                summary_string += f"\n  {dup}"
+        return summary_string
 
     def _get_duplicate_action_from_user(
         self, task: importer.ImportTask, found_duplicates: list[AlbumOrItem]
@@ -228,7 +230,22 @@ class WebImportSession(importer.ImportSession):
             choice: PromptChoice = PromptChoice(action.value, action.text, None)
             choices.append(choice)
 
-        queue_item = QueueStorageItem(task, choices, QueueStorageType.DUPLICATE)
+        # Print some detail about the existing and new items so the
+        # user can make an informed decision.
+        duplicate_summary = {"old" : []}
+        for duplicate in found_duplicates:
+            duplicate_summary["old"].append(self._report_item_summary(
+                "Old",
+                (
+                    list(duplicate.items())
+                    if isinstance(duplicate, Album)
+                    else [duplicate]
+                ),
+                is_album,
+            ))
+
+        duplicate_summary["new"] = self._report_item_summary("New", task.imported_items(), is_album)
+        queue_item = QueueStorageItem(task, choices, QueueStorageType.DUPLICATE, duplicate_summary)
         queue_id = self.queues.store(queue_item)
         self._queue_ids.append(queue_id)
 
@@ -237,21 +254,7 @@ class WebImportSession(importer.ImportSession):
 
         assert isinstance(web_choice.choice, PromptChoice)
             
-        # Print some detail about the existing and new items so the
-        # user can make an informed decision.
-        # for duplicate in found_duplicates:
-        #     self._report_item_summary(
-        #         "Old",
-        #         (
-        #             list(duplicate.items())
-        #             if isinstance(duplicate, Album)
-        #             else [duplicate]
-        #         ),
-        #         is_album,
-        #     )
-        #
-        # self._report_item_summary("New", task.imported_items(), is_album)
-
+        self.queues.delete(queue_id)
         return web_choice.choice.short
         # return input_options(DuplicateAction.strict_options())
 
@@ -267,10 +270,13 @@ class WebImportSession(importer.ImportSession):
         return action
 
     def should_resume(self, path: PathBytes) -> bool:
-        return input_yn(
-            f"Import of the directory:\n{displayable_path(path)}\n"
-            "was interrupted. Resume (Y/n)?"
-        )
+        queue_item = QueueStorageItem(queue_type=QueueStorageType.RESUME, path=displayable_path(path))
+        queue_id = self.queues.store(queue_item)
+        self._queue_ids.append(queue_id)
+        choice = queue_item.queue.get()
+        self.queues.delete(queue_id)
+        return choice
+
 
     def _get_choices(self, task: ImportTask) -> list[PromptChoice]:
         """Get the list of prompt choices that should be presented to the

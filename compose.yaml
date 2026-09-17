@@ -1,6 +1,10 @@
 services:
   beets-jar:
-    build: .
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: beets-jar
     restart: unless-stopped
     ports:
@@ -15,5 +19,3 @@ services:
       # FOR DEVELOPMENT ONLY
       - ./app:/app/app
     command: sh -c "uv sync --frozen --group dev && uvicorn app.main:app --host 0.0.0.0 --port 7734 --reload --reload-dir /app/app"
-    
-

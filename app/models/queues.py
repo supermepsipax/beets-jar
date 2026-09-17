@@ -6,20 +6,35 @@ from beets.util import PromptChoice
 from beets.importer import ImportTask
 from queue import Queue
 
+
 class QueueStorageType(str, enum.Enum):
     CANDIDATE = "candidate"
     DUPLICATE = "duplicate"
+    RESUME = "resume"
+
 
 class QueueStorageItem:
-    def __init__(self, task: ImportTask | None = None, choices: list[PromptChoice] | None = None, queue_type:QueueStorageType = QueueStorageType.CANDIDATE):
+    def __init__(
+        self,
+        task: ImportTask | None = None,
+        choices: list[PromptChoice] | None = None,
+        queue_type: QueueStorageType = QueueStorageType.CANDIDATE,
+        duplicate_summary: dict[str, list[str] | str] | None = None,
+        path: str | None = None
+    ):
         self.queue = Queue()
         self.task = task
         self.choices = choices
         self.queue_type = queue_type
+        if queue_type == QueueStorageType.DUPLICATE and duplicate_summary is not None:
+            self.duplicate_summary = duplicate_summary
+        if queue_type == QueueStorageType.RESUME and path is not None:
+            self.path = path
 
 
 class QueueStorage:
-    """Designed to be in memory storage"""
+    """Designed to be in memory storage only"""
+
     def __init__(self):
         self.queues: dict[str, QueueStorageItem] = {}
         self._lock = threading.Lock()
@@ -40,7 +55,8 @@ class QueueStorage:
 
     def store(self, queue: QueueStorageItem) -> str:
         queue_id = uuid.uuid4().hex
-        print(f"storing new queue item {queue_id}")
+        # TODO: remove print
+        # print(f"storing new queue item {queue_id}")
         with self._lock:
             self.queues[queue_id] = queue
         self._notify()
@@ -50,17 +66,35 @@ class QueueStorage:
         with self._lock:
             return self.queues.get(queue_id)
 
-    def update(self, queue_id: str, task: ImportTask | None = None, choices: list[PromptChoice] | None = None):
-        print(f"updating queue {queue_id}")
+    def update(
+        self,
+        queue_id: str,
+        task: ImportTask | None = None,
+        choices: list[PromptChoice] | None = None,
+        duplicate_summary: dict[str, list[str] | str] | None = None,
+        path: str | None = None
+    ):
+        # TODO: remove print
+        # print(f"updating queue {queue_id}")
         with self._lock:
             queue_item = self.queues.get(queue_id)
             if queue_item:
                 if task is not None:
-                    print(f"task {task}")
+                    # TODO: remove print
+                    # print(f"task {task}")
                     queue_item.task = task
                 if choices is not None:
-                    print(f"choices {choices}")
+                    # TODO: remove print
+                    # print(f"choices {choices}")
                     queue_item.choices = choices
+                if duplicate_summary is not None:
+                    # TODO: remove print
+                    # print(f"duplicate_summary {duplicate_summary}")
+                    queue_item.duplicate_summary = duplicate_summary
+                if path is not None:
+                    # TODO: remove print
+                    # print(f"path {path}")
+                    queue_item.path = path
         self._notify()
 
     def delete(self, queue_id: str):

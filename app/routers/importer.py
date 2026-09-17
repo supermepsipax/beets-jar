@@ -5,25 +5,22 @@ import asyncio
 from beets.library import Library
 import threading
 from app.services import WebImportSession
-from app import get_queues, get_lib
+from app import get_queues, get_lib, TEMPLATES_DIR
 from app.models import QueueStorage, QueueStorageItem, WebChoice
 import logging
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
-from beets import config as beets_config
-from beets import plugins as beets_plugins
 
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["importer"])
-templates = Jinja2Templates("app/templates")
+templates = Jinja2Templates(TEMPLATES_DIR)
 
 
 @router.get("/import", response_class=HTMLResponse)
 async def search_page(
     request: Request,
-    # db: AsyncSession = Depends(get_db),
 ):
     """Main importer page."""
 
@@ -47,7 +44,8 @@ async def queues_stream(
         current_version = queues.version
         if current_version != last_version:
             last_version = current_version
-            print("queue is updated")
+            #TODO: Remove
+            # print("queue is updated")
             html = templates.get_template("queues/queue_list.html").render(
                 request=request,
                 queues=queues,
@@ -71,8 +69,6 @@ async def start_import(
         mbid: str = "",
 ):
     """Triggers an import, can have an optional mbid to help aid import"""
-    beets_config.read()
-    beets_plugins.load_plugins()
     import_session = WebImportSession(
             lib = lib,
             paths = [path],
@@ -128,12 +124,17 @@ async def make_import_choice(
                 raise HTTPException(status_code=400, detail="Unknown action")
             web_choice = WebChoice(choice, {})
 
+    elif queue_item.queue_type == QueueStorageType.RESUME:
+        if type == "action":
+            queue_item.queue.put("yes"==value)
+            return HTMLResponse('<p>Choice submited.</p>')
+
+
     else:
         raise HTTPException(status_code=400, detail="Unknown type")
 
     queue_item.queue.put(web_choice)
-    return HTMLResponse(
-            f'<div id="import-{queue_id}"><p>Choice submited.</p></div>')
+    return HTMLResponse('<p>Choice submited.</p>')
 
 
 

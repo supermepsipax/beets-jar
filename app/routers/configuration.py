@@ -1,15 +1,17 @@
-from app.services import get_config_text
 import logging
 import os
 import yaml
 from pathlib import Path
+from beets import config as beets_config
 from fastapi import APIRouter, Request, HTTPException, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from app import TEMPLATES_DIR
+from app.services import get_config_text
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["configuration"])
-templates = Jinja2Templates("app/templates")
+templates = Jinja2Templates(TEMPLATES_DIR)
 
 @router.get("/configuration", response_class=HTMLResponse)
 async def configuration_page(
@@ -55,9 +57,13 @@ async def update_configuration(
             },
         )
         return response
-    config_path = Path(os.environ["BEETSDIR"], "config.yaml")
+
+    # config_path = Path(os.environ["BEETSDIR"], "config.yaml")
+    config_path = Path(beets_config.config_dir(), "config.yaml")
     with open(config_path,"w") as f:
         f.write(yaml_text)
+
+    beets_config.set(yaml.safe_load(yaml_text))
 
     response = templates.TemplateResponse(
         request,

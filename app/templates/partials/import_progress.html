@@ -1,13 +1,20 @@
 <div id="import-{{ queue_id }}" class="import-card">
 	<header class="import-card-header">
 		<div>
-			<strong class="import-card-title">{{ path }}</strong>
-			<span class="import-card-subtitle">{{ item_count }} items</span>
+			<strong class="import-card-title">
+				{% for p in item.task.paths %}
+				{{ p.decode('utf-8', 'replace') }}
+				{% if not loop.last %}, 
+				{% endif %}
+				{% endfor %}
+			</strong>
+			<span class="import-card-subtitle">{{ item.task.items|length }} items</span>
 		</div>
+		{% if item.choices %}
 		<div class="import-card-header-actions">
 			{% for choice in item.choices %}
 			{% if choice.short == "s" or choice.short == "b" %}
-			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-swap="outerHTML">
+			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}">
 				<input type="hidden" name="type" value="action">
 				<input type="hidden" name="value" value="{{ choice.short }}">
 				<button type="submit" class="header-action" title="{{ choice.long }}">
@@ -21,6 +28,7 @@
 			{% endif %}
 			{% endfor %}
 		</div>
+		{% endif %}
 	</header>
 
 	<div class="import-card-body">
@@ -37,8 +45,8 @@
 			<tbody>
 				{% for candidate in item.task.candidates %}
 				<tr class="candidate-row" hx-confirm="Are you sure, {{ candidate.info.name }} is the correct option?"
-					hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-include="this"
-					hx-swap="outerHTML" hx-trigger:inherited-"click" hx-vals='{
+					hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}" hx-include="this"
+					hx-trigger:inherited-"click" hx-vals='{
 						"type": "candidate",
 						"value": "{{ loop.index }}" 
 						  }'>
@@ -55,6 +63,7 @@
 		{% else %}
 		<p class="no-results">No matching releases found.</p>
 		{% endif %}
+		<div id="status-message-{{ queue_id }}" class="import-status-message"></div>
 
 		<div class="import-actions">
 			{% for choice in item.choices %}
@@ -71,8 +80,7 @@
 			{% for choice in item.choices %}
 
 			{% if choice.short == "e" %}
-			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}"
-				hx-swap="outerHTML">
+			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}">
 				<input type="hidden" name="type" value="action">
 				<input type="hidden" name="value" value="{{ choice.short }}">
 
@@ -89,8 +97,7 @@
 			</form>
 
 			{% elif choice.short == "i" %}
-			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}"
-				hx-swap="outerHTML">
+			<form class="manual-action" hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}">
 				<input type="hidden" name="type" value="action">
 				<input type="hidden" name="value" value="{{ choice.short }}">
 
@@ -110,10 +117,18 @@
 
 		</div>
 		{% elif item.queue_type == "duplicate" %}
+		<div class="duplicate-summary">
+			<p>This album is already in the library!</p>
+			{% for duplicate in item.duplicate_summary.old %}
+			<p>{{ duplicate }}</p>
+			{% endfor %}
+			<p>{{ item.duplicate_summary.new }}
 
+		</div>
+		<div id="status-message-{{ queue_id }}" class="import-status-message"></div>
 		<div class="import-actions">
 			{% for choice in item.choices %}
-			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#import-{{ queue_id }}" hx-swap="outerHTML">
+			<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}" hx-swap="outerHTML">
 				<input type="hidden" name="type" value="action">
 				<input type="hidden" name="value" value="{{ choice.short }}">
 
@@ -122,5 +137,27 @@
 				</button>
 			</form>
 			{% endfor %}
+		</div>
+
+		{% elif item.queue_type == "resume" %}
+
+		<div class="resume-prompt">
+			<p>Import of the directory {{ item.path }} was interrupted. Resume?</p>
+			<div id="status-message-{{ queue_id }}" class="import-status-message"></div>
+			<div class="resume-buttons">
+				<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}" hx-swap="outerHTML">
+					<input type="hidden" name="type" value="action">
+					<input type="hidden" name="value" value="yes">
+					<button type="submit">Yes</button>
+				</form>
+				<form hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}" hx-swap="outerHTML">
+					<input type="hidden" name="type" value="action">
+					<input type="hidden" name="value" value="no">
+					<button type="submit">No</button>
+				</form>
+			</div>
+		</div>
+
 		{% endif %}
 		</div>
+</div>

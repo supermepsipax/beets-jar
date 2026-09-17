@@ -1,7 +1,7 @@
 from beets.dbcore import Results
 from typing import Optional
 from beets.library import Library, Album, Item
-from app import get_lib
+from app import get_lib, TEMPLATES_DIR
 import logging
 from fastapi import APIRouter, Request, Depends
 from fastapi.templating import Jinja2Templates
@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
-templates = Jinja2Templates("app/templates")
+templates = Jinja2Templates(TEMPLATES_DIR)
 
 @router.get("/", response_class=HTMLResponse)
 async def index(
