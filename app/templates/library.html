@@ -3,8 +3,16 @@
 {% block title %}Library - Beets-Jar{% endblock %}
 
 {% block content %}
-<label>Item Count: {{ item_count }}</label>
-<label>Album Count: {{ album_count }}</label>
+<div class="library-stats">
+	<div class="library-stat-block">
+		<label class="library-stat-number">{{ item_count }}</label>
+		<label class="library-state-text">Tracks</label>
+	</div>
+	<div class="library-stat-block">
+		<label class="library-stat-number">{{ album_count }}</label>
+		<label class="library-state-text">Album{% if album_count > 1%}s{% endif %}</label>
+	</div>
+</div>
 <form 
 	hx-get="/api/items" 
 	hx-trigger="input delay:300ms, change target:input[type='checkbox']" 

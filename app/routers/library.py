@@ -1,3 +1,4 @@
+from app.services import get_loaded_plugins
 from beets.dbcore import Results
 from typing import Optional
 from beets.library import Library, Album, Item
@@ -23,10 +24,8 @@ async def library_page(
     lib: Library = Depends(get_lib),
 ):
     """Main library page."""
-    # for item in lib.items():
-    #     logger.info(item)
-    # for album in lib.albums():
-    #     logger.info(album)
+
+    plugins = get_loaded_plugins()
 
     response = templates.TemplateResponse(
         request,
@@ -44,22 +43,24 @@ async def get_items(
     request: Request,
     lib: Library = Depends(get_lib),
     query: str = "",
-    album: str | None = None,
+    album: bool = False,
 ):
     """Main library page."""
 
-    show_only_albums = album is not None
 
-    if show_only_albums:
-        results: Results[Album] = lib.albums(query)
+    if album:
+        albums: Results[Album] = lib.albums(query)
+        items = None
     else:
-        results: Results[Item] = lib.items(query)
+        items: Results[Item] = lib.items(query)
+        albums = None
 
     response = templates.TemplateResponse(
         request,
         "partials/items.html",
         {
-            "items": results,
+            "items": items,
+            "albums": albums,
         },
 
     )

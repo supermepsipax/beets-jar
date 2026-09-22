@@ -1,5 +1,23 @@
-<ul>
-	{% for item in items %}
-	<li>{{ item.title }}</li>
-	{% endfor %}
-</ul>
+<table>
+	<thead>
+		<tr>
+			<th>Title</th>
+			<th>Artist</th>
+		</tr>
+	</thead>
+	{% if items %}
+		{% for item in items %}
+		<tr>
+			<td>{{ item.title }}</td>
+			<td>{{ item.artist }}</td>
+		</tr>
+		{% endfor %}
+	{% elif albums %}
+		{% for album in albums %}
+		<tr>
+			<td>{{ album.album }}</td>
+			<td>{{ album.albumartist }}</td>
+		</tr>
+		{% endfor %}
+	{% endif %}
+</table>
