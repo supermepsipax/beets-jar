@@ -9,6 +9,7 @@ from beets.library import Library
 from app import STATIC_DIR
 from app.routers import library_router, import_router, configuration_router
 from app.models import QueueStorage
+from app.imports import event_bus, ImportRegistry
 
 
 def create_app(lib: Library | None = None) -> FastAPI:
@@ -30,6 +31,11 @@ def create_app(lib: Library | None = None) -> FastAPI:
         queues.bind_loop(asyncio.get_running_loop())
         app.state.queues = queues
 
+        imports = ImportRegistry()
+        event_bus.bind(asyncio.get_running_loop())
+        consumer = asyncio.create_task(event_bus.consume(imports.apply))
+        app.state.imports = imports
+
         # Uvicorn waits for open connections before running lifespan shutdown, so the
         # SSE stream never ends and the server hangs. Hook uvicorn's signal handlers
         # (installed before startup) so streams are closed as soon as shutdown begins.
@@ -43,12 +49,15 @@ def create_app(lib: Library | None = None) -> FastAPI:
 
             def handler(signum, frame, previous=previous):
                 loop.call_soon_threadsafe(queues.close)
+                loop.call_soon_threadsafe(imports.close)
                 previous(signum, frame)
 
             signal.signal(sig, handler)
 
         yield
 
+        event_bus.unbind()
+        consumer.cancel()
         for sig, previous in previous_handlers.items():
             signal.signal(sig, previous)
         if owns_lib:

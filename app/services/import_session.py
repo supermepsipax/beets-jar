@@ -43,9 +43,7 @@ class WebImportSession(importer.ImportSession):
 
     def __init__(self, *args, queues: QueueStorage, mbid: str = "", **kwargs):
         super().__init__(*args,  **kwargs)
-        self.session_id = id(self)
-        log.info(f"Session ID: {self.session_id}")
-        print(f"Session ID: {self.session_id}")
+        self.session_id = uuid.uuid4().hex
         self.queues = queues
         self._queue_ids = []
 

@@ -1,4 +1,3 @@
-from rich.jupyter import display
 from uuid import uuid4
 from beets.util import displayable_path
 from app.imports.events import TaskSummary
@@ -10,7 +9,7 @@ def task_key(task) -> str:
     return task_id
 
 def summarize_task(task) -> TaskSummary:
-    items = task.itmes or []
+    items = task.items or []
     return TaskSummary(
         paths = tuple(displayable_path(path) for path in (task.paths or [])),
         item_count = len(items),

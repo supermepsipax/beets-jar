@@ -5,8 +5,9 @@ import asyncio
 from beets.library import Library
 import threading
 from app.services import WebImportSession
-from app import get_queues, get_lib, TEMPLATES_DIR
+from app import get_queues, get_lib, TEMPLATES_DIR, get_imports
 from app.models import QueueStorage, QueueStorageItem, WebChoice
+from app.imports import ImportRegistry
 import logging
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.templating import Jinja2Templates
@@ -136,6 +137,24 @@ async def make_import_choice(
     queue_item.queue.put(web_choice)
     return HTMLResponse('<p>Choice submited.</p>')
 
+@router.get("/api/import/debug")
+async def import_debug(imports: ImportRegistry = Depends(get_imports)):
+    return {
+        sid: {
+            "status": s.status,
+            "prompt": s.prompt.prompt_id if s.prompt else None,
+            "tasks": {
+                tid: {
+                    "paths": t.summary.paths,
+                    "phase": t.phase.name,
+                    "outcome": t.outcome,
+                    "prompt": t.prompt.kind if t.prompt else None,
+                }
+                for tid, t in s.tasks.items()
+            },
+        }
+        for sid, s in imports.sessions.items()
+    }
 
 
 
