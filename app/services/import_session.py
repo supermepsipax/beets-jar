@@ -43,7 +43,9 @@ class WebImportSession(importer.ImportSession):
 
     def __init__(self, *args, queues: QueueStorage, mbid: str = "", **kwargs):
         super().__init__(*args,  **kwargs)
-        self.session_id = uuid.uuid4().hex
+        self.session_id = id(self)
+        log.info(f"Session ID: {self.session_id}")
+        print(f"Session ID: {self.session_id}")
         self.queues = queues
         self._queue_ids = []
 
@@ -112,7 +114,7 @@ class WebImportSession(importer.ImportSession):
             # or, basic choices that require no more action here.
             if isinstance(web_choice.choice, AlbumMatch) or (
                 isinstance(web_choice.choice, importer.Action)
-                and web_choice in (importer.Action.SKIP, importer.Action.ASIS)
+                and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
                 self.queues.delete(queue_id)
@@ -201,7 +203,10 @@ class WebImportSession(importer.ImportSession):
                 else:
                     post_choice = web_choice.choice.callback(self, task)
                 if isinstance(post_choice, importer.Action):
-                    return post_choice.choice
+                    return post_choice
+                elif isinstance(post_choice, Proposal):
+                    task.candidates = post_choice.candidates
+                    task.rec = post_choice.recommnedation
 
     def _report_item_summary(
         self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool

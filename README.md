@@ -48,7 +48,7 @@ beet jar -D
 ```
 
 ## Current Features
-1. A (subjectively) beautiful front end for your beets setup
+1. A (subjectively) beautiful front end for your beets setup (with light/dark theme)
 2. Basic library queries
 3. Basic configuration editing + reloading
 4. Import via RESTful API
@@ -65,7 +65,6 @@ beet jar -D
 1. Music server capabilities (already covered by so many better plugins)
 2. Anything not related to stock beets + official plugins.
 3. Anything to do with LLMs
-
 
 
 ## Migrating existing library, config, and plugins:

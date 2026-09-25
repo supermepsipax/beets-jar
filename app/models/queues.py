@@ -41,6 +41,7 @@ class QueueStorage:
         self._version = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._waiters: list[asyncio.Event] = []
+        self._closing = False
 
     def bind_loop(self, loop: asyncio.AbstractEventLoop):
         """Called at startup from the async context"""
@@ -52,6 +53,16 @@ class QueueStorage:
         if self._loop:
             for event in self._waiters:
                 self._loop.call_soon_threadsafe(event.set)
+
+    def close(self):
+        """Wakes all SSE clients and tells them to stop streaming, called on server shutdown"""
+        self._closing = True
+        for event in self._waiters:
+            event.set()
+
+    @property
+    def closing(self) -> bool:
+        return self._closing
 
     def store(self, queue: QueueStorageItem) -> str:
         queue_id = uuid.uuid4().hex
@@ -112,7 +123,7 @@ class QueueStorage:
 
     async def wait_for_change(self, since_version: int) -> int:
         """Allows multiple SSE clients to wait for a change"""
-        if self._version > since_version:
+        if self._version > since_version or self._closing:
             return self._version
 
         event = asyncio.Event()

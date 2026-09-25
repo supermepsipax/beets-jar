@@ -1,10 +1,11 @@
 """Beets plugin for web interace and RESTful API"""
+from beets.util import displayable_path
 
 import os
 import sys
 import uvicorn
 from beets import ui
-from beets.plugins import BeetsPlugin
+from beets.plugins import BeetsPlugin, EventType
 
 def _run_detached(host, port, debug):
     """Forks server into a background process, probably only works on Linux/Mac"""
@@ -17,7 +18,8 @@ def _run_detached(host, port, debug):
     sys.stdin.close()
     from app.main import create_app
     app = create_app()
-    uvicorn.run(app, host=host, port=port, log_level="debug" if debug else "info")
+    uvicorn.run(app, host=host, port=port, log_level="debug" if debug else "info",
+                timeout_graceful_shutdown=5)
 
 
 class JarPlugin(BeetsPlugin):
@@ -27,6 +29,36 @@ class JarPlugin(BeetsPlugin):
             "host": "127.0.0.1",
             "port": 7734,
         })
+
+        import_events: list[EventType] = [
+            "import_begin",
+            "import_task_created",
+            "import_task_start",
+            "import_task_before_choice",
+            "before_choose_candidate",
+            "import_task_choice",
+            "import_task_apply",
+            "import_task_files",
+            "import",
+            "album_imported",
+            "item_imported",
+        ]
+        for event_name in import_events:
+            self.register_listener(event_name, self._make_handler(event_name))
+
+    def _make_handler(self, event_name):
+
+        def handler(**kwargs):
+            task = kwargs.get("task")
+            session = kwargs.get("session")
+
+            print(f"Recieved Import Event: {event_name}")
+            if task is not None:
+                print(f"Task ID: {id(task)}")
+            if session is not None:
+                print(f"Session ID: {id(session)}")
+
+        return handler
 
     def commands(self):
         cmd = ui.Subcommand("jar", help="start the Beets-Jar web interface")
@@ -66,11 +98,16 @@ class JarPlugin(BeetsPlugin):
                     reload=True,
                     reload_dirs=[reload_dir],
                     log_level="debug" if opts.debug else "info",
+                    timeout_graceful_shutdown=5,
                 )
 
             else:
                 from app.main import create_app
                 app = create_app(lib=lib)
-                uvicorn.run(app, host=host, port=port, log_level="debug" if opts.debug else "info")
+                uvicorn.run(
+                    app, host=host, port=port,
+                    log_level="debug" if opts.debug else "info",
+                    timeout_graceful_shutdown=5,
+                )
         cmd.func = func
         return [cmd]

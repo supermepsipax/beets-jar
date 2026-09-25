@@ -23,10 +23,6 @@ class WebPluginCommand:
                 "default": command.parser.defaults.get(option.dest, option.default),
                 "help": option.help,
             })
-        print(self.command)
-        for command_option in self.command_options:
-            for key, value in command_option.items():
-                print(f"{key}: {value}")
 
     @staticmethod
     def _infer_type(option):

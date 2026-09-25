@@ -39,7 +39,7 @@ async def queues_stream(
 ):
     last_version = -1
     while True:
-        if await request.is_disconnected():
+        if queues.closing or await request.is_disconnected():
             break
         current_version = queues.version
         if current_version != last_version:

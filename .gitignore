@@ -11,4 +11,5 @@ wheels/
 
 # Dev Environment
 dev/
+docs/
 tmp/

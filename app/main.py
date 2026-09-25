@@ -1,15 +1,15 @@
-from fastapi.staticfiles import StaticFiles
 import asyncio
+import signal
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from beets import config as beets_config
 from beets import plugins as beets_plugins
 from beets.library import Library
 from app import STATIC_DIR
-from app.routers import (
-    library_router, import_router, configuration_router
-)
+from app.routers import library_router, import_router, configuration_router
 from app.models import QueueStorage
+
 
 def create_app(lib: Library | None = None) -> FastAPI:
     @asynccontextmanager
@@ -29,7 +29,28 @@ def create_app(lib: Library | None = None) -> FastAPI:
         queues = QueueStorage()
         queues.bind_loop(asyncio.get_running_loop())
         app.state.queues = queues
+
+        # Uvicorn waits for open connections before running lifespan shutdown, so the
+        # SSE stream never ends and the server hangs. Hook uvicorn's signal handlers
+        # (installed before startup) so streams are closed as soon as shutdown begins.
+        loop = asyncio.get_running_loop()
+        previous_handlers = {}
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            previous = signal.getsignal(sig)
+            if not callable(previous):
+                continue
+            previous_handlers[sig] = previous
+
+            def handler(signum, frame, previous=previous):
+                loop.call_soon_threadsafe(queues.close)
+                previous(signum, frame)
+
+            signal.signal(sig, handler)
+
         yield
+
+        for sig, previous in previous_handlers.items():
+            signal.signal(sig, previous)
         if owns_lib:
             app.state.lib._close()
 
@@ -45,6 +66,7 @@ def create_app(lib: Library | None = None) -> FastAPI:
     app.include_router(import_router)
     app.include_router(configuration_router)
     return app
+
 
 app = create_app()
 
