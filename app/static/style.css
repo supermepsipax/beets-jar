@@ -451,7 +451,7 @@ button.task-row.needs-you:hover {
 .drop-zone span   { color: var(--text-muted); font-size: 0.85rem; }
 
 .path-form label,
-.test-imports label {
+.download-paths label {
 	display: block;
 	margin-bottom: 6px;
 	font-weight: bold;

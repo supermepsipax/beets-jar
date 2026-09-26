@@ -124,6 +124,9 @@ class WebImportSession(importer.ImportSession):
             return match
         if action is not None:
             return action
+        if task.rec == Recommendation.strong and not config["import"]["timid"]:
+            assert isinstance(task.candidates[0], AlbumMatch)
+            return task.candidates[0]
 
         # Loop until we have a choice.
 
@@ -190,7 +193,6 @@ class WebImportSession(importer.ImportSession):
         """Ask the user for a choice about tagging a single item. Returns
         either an action constant or a TrackMatch object.
         """
-        print(displayable_path(task.item.path))
 
         # Take immediate action if appropriate.
         # TODO: introduce beets.autotag.Candidates to remove these assertions
@@ -205,10 +207,9 @@ class WebImportSession(importer.ImportSession):
             return match
         if action is not None:
             return action
-
-        # queue_item = QueueStorageItem(task)
-        # queue_id = self.queues.store(queue_item)
-        # self._queue_ids.append(queue_id)
+        if task.rec == Recommendation.strong and not config["import"]["timid"]:
+            assert isinstance(task.candidates[0], TrackMatch)
+            return task.candidates[0]
 
         while True:
             # Ask for a choice.

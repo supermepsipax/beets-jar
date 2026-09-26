@@ -4,6 +4,7 @@ import os
 import threading
 from pathlib import Path
 
+from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse
@@ -91,19 +92,18 @@ async def stream_finished(
 def _work(request: Request, name: str, **context) -> HTMLResponse:
     return templates.TemplateResponse(request, f"imports/{name}.html", context)
 
-
-DEV_TEST_DIR = Path(__file__).resolve().parents[2] / "dev" / "downloads" / "test"
-
-
-def _test_imports() -> list[tuple[str, str]]:
+def _download_paths() -> list[tuple[str, str]]:
     """(label, path) for the dev test folders, plus one for the whole folder.
 
     Empty when the folder doesn't exist, so the buttons only show up in a dev checkout.
     """
-    if not DEV_TEST_DIR.is_dir():
+    download_paths = config["jar"]["download_paths"]
+    if not download_paths:
         return []
-    folders = sorted(p for p in DEV_TEST_DIR.iterdir() if p.is_dir())
-    return [(p.name, str(p)) for p in folders] + [("All of them", str(DEV_TEST_DIR))]
+    folders = []
+    for path_label, path in download_paths.items():
+        folders.append((path_label, path.as_filename()))
+    return folders
 
 
 def render_idle(request, imports, *, note=None, error=None):
@@ -111,7 +111,7 @@ def render_idle(request, imports, *, note=None, error=None):
         request,
         "work_idle",
         pending=imports.pending_count(),
-        test_imports=_test_imports(),
+        download_paths=_download_paths(),
         note=note,
         error=error,
     )

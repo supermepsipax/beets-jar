@@ -28,8 +28,12 @@ plugins:
   - jar
 
 jar:
-  host: 127.0.0.1
-  port: 7734
+ host: 127.0.0.1
+ port: 7734
+ import_paths:
+    - Downloads: /home/user/downloads
+
+
 ```
 
 Start the FastAPI application with:

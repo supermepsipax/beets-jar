@@ -18,11 +18,11 @@
 		</div>
 	</form>
 
-	{% if test_imports %}
-	<div class="test-imports">
-		<label>Test imports</label>
+	{% if download_paths %}
+	<div class="download_paths">
+		<label>Quick Import</label>
 		<div class="work-actions">
-			{% for label, path in test_imports %}
+			{% for label, path in download_paths %}
 			<form hx-post="/api/import/start" hx-target="#work-area">
 				<input type="hidden" name="path" value="{{ path }}">
 				<button type="submit" class="button-secondary">{{ label }}</button>
