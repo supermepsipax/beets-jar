@@ -1,0 +1,36 @@
+
+<div class="candidate-detail">
+	<div class="candidate-detail-head">
+		<div>
+			<h3 class="candidate-detail-title">{{ candidate.title }}</h3>
+			<p class="candidate-detail-artist">{{ candidate.artist }}</p>
+			{% if candidate.meta %}<p class="candidate-detail-meta">{{ candidate.meta }}</p>{% endif %}
+		</div>
+		<div class="match-pct">
+			<span class="library-stat-number">{{ candidate.pct }}%</span>
+			<span>match</span>
+		</div>
+	</div>
+
+	{% if candidate.tracks %}
+	<ol class="track-list">
+		{% for track in candidate.tracks %}
+		<li class="{{ 'is-changed' if track.old_title }}">
+			<span class="track-num">{{ track.number }}</span>
+			<span class="track-title">
+				{{ track.title }}
+				{% if track.old_title %}<small>was: {{ track.old_title }}</small>{% endif %}
+			</span>
+		</li>
+		{% endfor %}
+	</ol>
+	{% endif %}
+
+	{% if candidate.notes %}<p class="candidate-detail-note">{{ candidate.notes }}</p>{% endif %}
+
+	<form hx-post="{{ choose_url }}" hx-target="#work-area">
+		<input type="hidden" name="type" value="candidate">
+		<input type="hidden" name="value" value="{{ candidate.index }}">
+		<button type="submit" class="button-block">Apply</button>
+	</form>
+</div>

@@ -1,21 +1,22 @@
-<div class="duplicate-summary">
-	<p>This album is already in the library!</p>
-	{% for duplicate in prompt.duplicate_summary.old %}
-	<p>{{ duplicate }}</p>
-	{% endfor %}
-	<p>{{ prompt.duplicate_summary.new }}
+<div class="duplicate-prompt">
+	<h3>Already in your library</h3>
 
-</div>
-<div id="status-message-{{ s.session_id }}" class="import-status-message"></div>
-<div class="import-actions">
-	{% for choice in prompt.choices %}
-	<form hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#status-message-{{ s.session_id }}" hx-swap="outerHTML">
-		<input type="hidden" name="type" value="action">
-		<input type="hidden" name="value" value="{{ choice.short }}">
+	<dl class="duplicate-summary">
+		{% for line in prompt.duplicate_summary.old %}
+		<dt>In library</dt>
+		<dd>{{ line | replace("Old: ", "", 1) }}</dd>
+		{% endfor %}
+		<dt>This import</dt>
+		<dd>{{ prompt.duplicate_summary.new | replace("New: ", "", 1) }}</dd>
+	</dl>
 
-		<button type="submit">
-			{{ choice.long }}
-		</button>
-	</form>
-	{% endfor %}
+	<div class="work-actions">
+		{% for choice in prompt.choices %}
+		<form hx-post="{{ choose_url }}" hx-target="#work-area">
+			<input type="hidden" name="type" value="action">
+			<input type="hidden" name="value" value="{{ choice.short }}">
+			<button type="submit" class="button-secondary">{{ choice.long }}</button>
+		</form>
+		{% endfor %}
+	</div>
 </div>

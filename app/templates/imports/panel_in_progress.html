@@ -1,0 +1,36 @@
+{% for group in groups %}
+<div class="session-group">
+	<h3 class="session-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
+
+	{% if group.resume %}
+	<button type="button" class="task-row needs-you"
+		hx-get="/import/work/{{ group.session.session_id }}" hx-target="#work-area">
+		<span class="task-name">Resume?</span>
+		<span class="label">Choose →</span>
+	</button>
+	{% endif %}
+
+	{% for task in group.tasks %}
+	{% if open_prompt(task) %}
+	<button type="button" class="task-row needs-you"
+		hx-get="/import/work/{{ group.session.session_id }}/{{ task.task_id }}" hx-target="#work-area">
+		<span class="task-name">{{ task_name(group.session, task) }}</span>
+		<span class="label">{{ task_label(task) }}</span>
+	</button>
+	{% else %}
+	<div class="task-row">
+		<span class="task-name">{{ task_name(group.session, task) }}</span>
+		<span class="label">{{ task_label(task) }}</span>
+	</div>
+	{% endif %}
+	{% endfor %}
+
+	{% if group.scanning %}
+	<div class="task-row">
+		<span class="task-name">Scanning…</span>
+	</div>
+	{% endif %}
+</div>
+{% else %}
+<p class="panel-empty">Nothing running.</p>
+{% endfor %}

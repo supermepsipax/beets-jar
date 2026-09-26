@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import contextlib
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -8,7 +9,6 @@ from beets import plugins as beets_plugins
 from beets.library import Library
 from app import STATIC_DIR
 from app.routers import library_router, import_router, configuration_router
-from app.models import QueueStorage
 from app.imports import event_bus, ImportRegistry
 
 
@@ -27,10 +27,6 @@ def create_app(lib: Library | None = None) -> FastAPI:
             )
             owns_lib = True
 
-        queues = QueueStorage()
-        queues.bind_loop(asyncio.get_running_loop())
-        app.state.queues = queues
-
         imports = ImportRegistry()
         event_bus.bind(asyncio.get_running_loop())
         consumer = asyncio.create_task(event_bus.consume(imports.apply))
@@ -48,7 +44,6 @@ def create_app(lib: Library | None = None) -> FastAPI:
             previous_handlers[sig] = previous
 
             def handler(signum, frame, previous=previous):
-                loop.call_soon_threadsafe(queues.close)
                 loop.call_soon_threadsafe(imports.close)
                 previous(signum, frame)
 
@@ -58,6 +53,8 @@ def create_app(lib: Library | None = None) -> FastAPI:
 
         event_bus.unbind()
         consumer.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await consumer
         for sig, previous in previous_handlers.items():
             signal.signal(sig, previous)
         if owns_lib:

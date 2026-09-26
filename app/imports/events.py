@@ -38,6 +38,7 @@ class TaskSummary:
     is_album: bool
     artist: str | None = None
     album: str | None = None
+    raw_paths: tuple[bytes, ...] = ()
 
 
 @dataclass

@@ -1,0 +1,35 @@
+
+{% for group in groups %}
+<div class="session-group">
+	<div class="session-head">
+		<h3 class="session-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
+		{% if group.dismissable %}
+		<button type="button" class="icon-button" title="Dismiss"
+			hx-delete="/api/import/sessions/{{ group.session.session_id }}" hx-swap="none">×</button>
+		{% endif %}
+	</div>
+
+	{% for task in group.tasks %}
+	{% set tag = outcome_tag(task) %}
+	<div class="task-row">
+		<span class="task-name">{{ task_name(group.session, task) }}</span>
+		<span class="task-row-end">
+			<span class="tag tag-{{ tag.tone }}">{{ tag.text }}</span>
+			{% if can_restart(task) %}
+			<button type="button" class="icon-button" title="Try again"
+				hx-post="/api/import/sessions/{{ group.session.session_id }}/tasks/{{ task.task_id }}/restart"
+				hx-swap="none">↻</button>
+			{% endif %}
+		</span>
+	</div>
+	{% endfor %}
+
+	{% if group.empty_note %}
+	<div class="task-row" {% if group.session.error %}title="{{ group.session.error }}"{% endif %}>
+		<span class="task-name">{{ group.empty_note }}</span>
+	</div>
+	{% endif %}
+</div>
+{% else %}
+<p class="panel-empty">Nothing yet.</p>
+{% endfor %}

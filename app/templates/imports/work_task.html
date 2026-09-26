@@ -1,0 +1,20 @@
+
+<article class="work-card">
+	<header class="import-card-header">
+		<div>
+			<strong class="import-card-title">{{ task_name(session, task) if task else session_name(session) }}</strong>
+			<span class="import-card-subtitle">
+				{{ session_name(session) }}{% if task %} · {{ task.summary.item_count }} item{{ "s" if task.summary.item_count != 1 }}{% endif %}
+			</span>
+		</div>
+		<button type="button" class="header-action" title="Close"
+			hx-get="/import/work/idle" hx-target="#work-area">×</button>
+	</header>
+
+	<div class="import-card-body">
+		{% if note %}<p class="work-note">{{ note }}</p>{% endif %}
+		{% if error %}<p class="work-error">{{ error }}</p>{% endif %}
+
+		{% include "imports/prompt_" ~ prompt.kind ~ ".html" %}
+	</div>
+</article>

@@ -1,80 +1,73 @@
-{% if prompt.task.candidates %}
-<table class="candidate-table">
-	<thead>
-		<tr>
-			<th>#</th>
-			<th>Match</th>
-			<th>Artist -- Release</th>
-		</tr>
-	</thead>
-	<tbody>
-		{% for candidate in prompt.task.candidates %}
-		<tr class="candidate-row" hx-confirm="Are you sure, {{ candidate.info.name }} is the correct option?"
-			hx-post="/api/import/{{ queue_id }}/choose" hx-target="#status-message-{{ queue_id }}" hx-include="this"
-			hx-trigger:inherited-"click" hx-vals='{
-				"type": "candidate",
-				"value": "{{ loop.index }}" 
-				  }'>
-
-			<td>{{ loop.index }}</td>
-			<td>{{ "%.1f%%"|format((1 - candidate.distance.distance) * 100) }}</td>
-			<td>{{ candidate.info.artist }} -- {{ candidate.info.name }}</td>
-			<!-- <input type="hidden" name="type" value="candidate"> -->
-			<!-- <input type="hidden" name="value" value="{{ loop.index }}"> -->
-		</tr>
-		{% endfor %}
-	</tbody>
-</table>
-{% else %}
-<p class="no-results">No matching releases found.</p>
-{% endif %}
-<div id="status-message-{{ s.session_id }}" class="import-status-message"></div>
-
-<div class="import-actions">
-	{% for choice in prompt.choices %}
-	{% if choice.short not in ["s", "b", "e", "i"] %}
-	<form hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#import-{{ s.session_id }}" hx-swap="outerHTML">
+<div class="work-actions">
+	{% for choice in prompt.choices if choice.short not in ["e", "i", "b"] %}
+	<form hx-post="{{ choose_url }}" hx-target="#work-area">
 		<input type="hidden" name="type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
-		<button type="submit">{{ choice.long }}</button>
+		<button type="submit" class="button-secondary">{{ choice_label(choice) }}</button>
 	</form>
-	{% endif %}
+	{% endfor %}
+
+	{% for choice in prompt.choices if choice.short == "b" %}
+	<form class="work-actions-end" hx-post="{{ choose_url }}" hx-target="#work-area"
+		hx-confirm="Stop this whole import?">
+		<input type="hidden" name="type" value="action">
+		<input type="hidden" name="value" value="{{ choice.short }}">
+		<button type="submit" class="button-danger">{{ choice_label(choice) }}</button>
+	</form>
 	{% endfor %}
 </div>
-<div class="manual-action">
-	{% for choice in prompt.choices %}
 
-	{% if choice.short == "e" %}
-	<form class="manual-action" hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#import-{{ s.session_id }}" hx-swap="outerHTML">
+{% if candidates %}
+<div class="candidate-split" x-data="{ sel: 1 }">
+	<ol class="candidate-list">
+		{% for candidate in candidates %}
+		<li>
+			<button type="button" class="candidate-row"
+				:class="{ 'is-selected': sel === {{ candidate.index }} }"
+				@click="sel = {{ candidate.index }}"
+				hx-get="/import/work/{{ session.session_id }}/prompts/{{ prompt.prompt_id }}/candidates/{{ candidate.index }}"
+				hx-target="#candidate-detail">
+				<span class="candidate-pct">{{ candidate.pct }}%</span>
+				<span class="candidate-name">
+					<strong>{{ candidate.title }}</strong>
+					<span>{{ candidate.artist }}{% if candidate.year %} · {{ candidate.year }}{% endif %}</span>
+				</span>
+			</button>
+		</li>
+		{% endfor %}
+	</ol>
+
+	<div id="candidate-detail">
+		{% include "imports/candidate_detail.html" %}
+	</div>
+</div>
+{% else %}
+<p class="no-results">No matches found. Try a search.</p>
+{% endif %}
+
+<div class="manual-actions">
+	{% for choice in prompt.choices if choice.short == "e" %}
+	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area">
 		<input type="hidden" name="type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
-
-		<label>Manual search</label>
-
+		<label>Search</label>
 		<div class="manual-action-row">
 			<input name="artist" placeholder="Artist">
-			<input name="query" placeholder="Album / Track">
-
-			<button type="submit">
-				{{ choice.long }}
-			</button>
+			<input name="query" placeholder="{{ 'Album' if is_album else 'Track' }}" required>
+			<button type="submit">Search</button>
 		</div>
 	</form>
-	{% elif choice.short == "i" %}
-	<form class="manual-action" hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#import-{{ s.session_id }}" hx-swap="outerHTML">
+	{% endfor %}
+
+	{% for choice in prompt.choices if choice.short == "i" %}
+	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area">
 		<input type="hidden" name="type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
-
 		<label>MusicBrainz ID</label>
-
 		<div class="manual-action-row">
-			<input name="mbid" placeholder="MBID">
-
-			<button type="submit">
-				{{ choice.long }}
-			</button>
+			<input name="mbid" placeholder="MBID" required>
+			<button type="submit">Look up</button>
 		</div>
 	</form>
-	{% endif %}
 	{% endfor %}
 </div>

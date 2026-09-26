@@ -1,5 +1,5 @@
 **UI**
-- [ ] Find ideal card size for import flow
+- [x] Find ideal card size for import flow
 - [ ] More advanced code editor 
 **Import**
 - [x] Basic import w/ user interaction
@@ -20,5 +20,6 @@
 - [ ] Beets db is in DELETE mode and maybe should switch to WAL mode
 - [ ] Many plugins expect access to stdout for relaying info
 **Bugs**
+- [ ] Chromium browsers (Helium) keep import page SSE streams open after navigating away (bfcache?), 3 visits = 6 connections = navigation hangs. Fix: merge into one `/import/stream` w/ named events + native EventSource closed on `pagehide`
 
 

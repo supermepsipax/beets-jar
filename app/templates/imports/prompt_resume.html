@@ -1,16 +1,16 @@
 <div class="resume-prompt">
-	<p>Import of the directory {{ prompt.path }} was interrupted. Resume?</p>
-	<div id="status-message-{{ s.session_id }}" class="import-status-message"></div>
-	<div class="resume-buttons">
-		<form hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#status-message-{{ s.session_id }}" hx-swap="outerHTML">
+	<p>An earlier import of <strong>{{ prompt.path }}</strong> was interrupted. Pick up where it left off?</p>
+
+	<div class="work-actions">
+		<form hx-post="{{ choose_url }}" hx-target="#work-area">
 			<input type="hidden" name="type" value="action">
 			<input type="hidden" name="value" value="yes">
-			<button type="submit">Yes</button>
+			<button type="submit">Resume</button>
 		</form>
-		<form hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#status-message-{{ s.session_id }}" hx-swap="outerHTML">
+		<form hx-post="{{ choose_url }}" hx-target="#work-area">
 			<input type="hidden" name="type" value="action">
 			<input type="hidden" name="value" value="no">
-			<button type="submit">No</button>
+			<button type="submit" class="button-secondary">Start over</button>
 		</form>
 	</div>
 </div>

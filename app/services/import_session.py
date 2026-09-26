@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from uuid import uuid4
-from queue import Queue
 from collections import Counter
 from itertools import chain
+from queue import Queue
 from typing import TYPE_CHECKING, Iterator, Literal
+from uuid import uuid4
 
-from beets import config, importer, logging, plugins, ui
+from beets import config, importer, logging, plugins
 from beets.autotag import (
     AlbumMatch,
     Proposal,
@@ -34,17 +34,13 @@ from app.imports.events import (
     TaskOutcome,
 )
 from app.imports.snapshot import task_key
-from app.models import ChoiceType, QueueStorage, QueueStorageItem, WebChoice
-from app.models.queues import QueueStorageType
+from app.models import ChoiceType, WebChoice
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from beets.importer import ImportSession, ImportTask
     from beets.library import AlbumOrItem, Item
     from beets.util import PathBytes
 
-# Global logger.
 log = logging.getLogger("beets")
 
 
@@ -57,10 +53,11 @@ class WebImportSession(importer.ImportSession):
     based on unique identifiers.
     """
 
-    def __init__(self, *args, mbid: str = "", **kwargs):
+    def __init__(self, *args, mbid: str = "", restart: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.session_id = uuid4().hex
         self._aborted = False
+        self._restart = restart
 
     def run(self):
         event_bus.emit(
@@ -79,6 +76,11 @@ class WebImportSession(importer.ImportSession):
             if self._aborted:
                 status = SessionStatus.ABORTED
             event_bus.emit(SessionFinished(self.session_id, status, error))
+
+    def already_imported(self, toppath, paths) -> bool:
+        if self._restart:
+            return False
+        return super().already_imported(toppath, paths)
 
     def _ask(self, kind, task=None, choices=None, **extra):
         prompt = Prompt(uuid4().hex, kind, Queue(), task, choices or [], **extra)
@@ -157,14 +159,14 @@ class WebImportSession(importer.ImportSession):
                 isinstance(web_choice.choice, PromptChoice)
                 and web_choice.choice.callback
             ):
-                if ChoiceType(web_choice.choice.short) == ChoiceType.SEARCH:
+                if web_choice.choice.short == ChoiceType.SEARCH:
                     post_choice = web_choice.choice.callback(
                         self,
                         task,
                         web_choice.follow_up_info["artist"],
                         web_choice.follow_up_info["query"],
                     )
-                elif ChoiceType(web_choice.choice.short) == ChoiceType.ID:
+                elif web_choice.choice.short == ChoiceType.ID:
                     post_choice = web_choice.choice.callback(
                         self, task, web_choice.follow_up_info["mbid"]
                     )
@@ -237,14 +239,14 @@ class WebImportSession(importer.ImportSession):
                 isinstance(web_choice.choice, PromptChoice)
                 and web_choice.choice.callback
             ):
-                if ChoiceType(web_choice.choice.short) == ChoiceType.SEARCH:
+                if web_choice.choice.short == ChoiceType.SEARCH:
                     post_choice = web_choice.choice.callback(
                         self,
                         task,
                         web_choice.follow_up_info["artist"],
                         web_choice.follow_up_info["query"],
                     )
-                elif ChoiceType(web_choice.choice.short) == ChoiceType.ID:
+                elif web_choice.choice.short == ChoiceType.ID:
                     post_choice = web_choice.choice.callback(
                         self, task, web_choice.follow_up_info["mbid"]
                     )
@@ -254,7 +256,7 @@ class WebImportSession(importer.ImportSession):
                     return post_choice
                 elif isinstance(post_choice, Proposal):
                     task.candidates = post_choice.candidates
-                    task.rec = post_choice.recommnedation
+                    task.rec = post_choice.recommendation
 
     def _report_item_summary(
         self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool
@@ -268,12 +270,20 @@ class WebImportSession(importer.ImportSession):
     def get_duplicate_action(self, task, found_duplicates) -> DuplicateAction:
         action = super().get_duplicate_action(task, found_duplicates)
         if action is DuplicateAction.ASK:
-            action = DuplicateAction(self._get_duplicate_action_from_user(task, found_duplicates))
+            action = DuplicateAction(
+                self._get_duplicate_action_from_user(task, found_duplicates)
+            )
 
         if action is DuplicateAction.SKIP:
-            event_bus.emit(TaskFinished(self.session_id, task_key(task), TaskOutcome.SKIPPED, "duplicate"))
+            event_bus.emit(
+                TaskFinished(
+                    self.session_id, task_key(task), TaskOutcome.SKIPPED, "duplicate"
+                )
+            )
         elif action is DuplicateAction.MERGE:
-            event_bus.emit(TaskFinished(self.session_id, task_key(task), TaskOutcome.MERGED))
+            event_bus.emit(
+                TaskFinished(self.session_id, task_key(task), TaskOutcome.MERGED)
+            )
         return action
 
     def _get_duplicate_action_from_user(
@@ -291,6 +301,8 @@ class WebImportSession(importer.ImportSession):
             return "s"
         choices = []
         for action in DuplicateAction:
+            if action is DuplicateAction.ASK:
+                continue
             choice: PromptChoice = PromptChoice(action.value, action.text, None)
             choices.append(choice)
 
@@ -319,7 +331,9 @@ class WebImportSession(importer.ImportSession):
         # queue_id = self.queues.store(queue_item)
         # self._queue_ids.append(queue_id)
 
-        web_choice: WebChoice = self._ask("duplicated", task, choices, duplicate_summary=duplicate_summary)
+        web_choice: WebChoice = self._ask(
+            "duplicate", task, choices, duplicate_summary=duplicate_summary
+        )
 
         assert isinstance(web_choice.choice, PromptChoice)
 
@@ -648,6 +662,7 @@ def web_id(session, task, mbid):
 
 def abort_action(session: ImportSession, task: ImportTask) -> None:
     """A prompt choice callback that aborts the importer."""
+    session._aborted = True
     raise importer.ImportAbortError()
 
 

@@ -1,0 +1,14 @@
+
+<article class="work-card work-waiting"
+	hx-get="/import/work/{{ session.session_id }}/{{ task.task_id }}?follow=1"
+	hx-trigger="every 1s" hx-target="#work-area">
+	<header class="import-card-header">
+		<div>
+			<strong class="import-card-title">{{ task_name(session, task) }}</strong>
+			<span class="import-card-subtitle">{{ session_name(session) }}</span>
+		</div>
+	</header>
+	<div class="import-card-body">
+		<p class="work-waiting-text">Searching…</p>
+	</div>
+</article>

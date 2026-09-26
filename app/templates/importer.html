@@ -3,20 +3,31 @@
 {% block title %}Import - Beets-Jar{% endblock %}
 
 {% block content %}
-<div class="import-actions">
-	<form hx-post="/api/import/start">
-		<input type="hidden" name="path" value="/home/supermepsipax/Code/beets-jar/dev/downloads/test/Art of Doubt">
-		<button type="submit">Test Import 1</button>
-	</form>
-	<form hx-post="/api/import/start">
-		<input type="hidden" name="path" value="/home/supermepsipax/Code/beets-jar/dev/downloads/test/Art of Doubt (copy)">
-		<button type="submit">Test Import 2</button>
-	</form>
-	<form hx-post="/api/import/start">
-		<input type="hidden" name="path" value="/home/supermepsipax/Code/beets-jar/dev/downloads/test/Art of Doubt (another copy)">
-		<button type="submit">Test Import 3</button>
-	</form>
-</div>
-<div id="import-list" hx-get="/import/queues/stream" hx-trigger="load">
+<div class="import-layout" x-data="{ left: false, right: false }" @keydown.escape.window="left = false; right = false">
+
+	{# Mobile only (hidden by CSS on desktop) #}
+	<div class="import-toolbar">
+		<button type="button" class="drawer-toggle drawer-toggle-left" @click="left = !left; right = false">
+			☰ In progress
+		</button>
+		<button type="button" class="drawer-toggle drawer-toggle-right" @click="right = !right; left = false">
+			Finished
+		</button>
+	</div>
+	<div class="drawer-backdrop" x-show="left || right" x-cloak @click="left = false; right = false"></div>
+
+	<aside id="in-progress" class="import-panel drawer" :class="{ 'is-open': left }"
+		@click="if ($event.target.closest('.needs-you')) left = false">
+		<h2 class="panel-title">In Progress</h2>
+		<div hx-get="/import/stream/in-progress" hx-trigger="load"></div>
+	</aside>
+
+	<section id="work-area" hx-get="/import/work" hx-trigger="load"></section>
+
+	<aside id="finished" class="import-panel drawer" :class="{ 'is-open': right }">
+		<h2 class="panel-title">Finished</h2>
+		<div hx-get="/import/stream/finished" hx-trigger="load"></div>
+	</aside>
+
 </div>
 {% endblock %}
