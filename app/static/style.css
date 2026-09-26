@@ -61,7 +61,8 @@ body {
 	font-family: 'Space Mono', monospace;
 }
 
-input[type="hidden"] {
+input[type="hidden"],
+[hidden] {
 	display: none !important;
 }
 
@@ -686,5 +687,58 @@ button.task-row.needs-you:hover {
 	background: var(--danger);
 	border: 2px solid var(--border);
 	border-radius: 50%;
+}
+/* }}} */
+
+/* {{{ --------- Configuration Page --------- */
+/* CodeMirror's own look (gutter, syntax, tooltips, panels) lives in the
+   EditorView.theme in config-editor.js; this is only the page around it. */
+.config-page {
+	padding: 24px;
+}
+
+.config-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+.config-bar button { padding: 6px 16px; }
+
+.config-status {
+	font-size: 0.85rem;
+	font-weight: bold;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.config-status:empty { display: none; }
+.config-status.is-error {
+	padding: 2px 8px;
+	white-space: normal;
+	background: var(--danger);
+	color: var(--on-primary);
+	border: 2px solid var(--border);
+	border-radius: var(--radius);
+}
+
+/* No-JS fallback: the plain textarea fills the card body */
+.config-card textarea {
+	display: block;
+	width: 100%;
+	height: 70vh;
+	box-sizing: border-box;
+	padding: 12px 16px;
+	font-family: 'Space Mono', monospace;
+	font-weight: normal;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	resize: vertical;
+}
+.config-card textarea:focus { transform: none; box-shadow: none; }
+
+@media (max-width: 900px) {
+	.config-page { padding: 16px; }
 }
 /* }}} */

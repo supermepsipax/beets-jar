@@ -92,16 +92,14 @@ async def stream_finished(
 def _work(request: Request, name: str, **context) -> HTMLResponse:
     return templates.TemplateResponse(request, f"imports/{name}.html", context)
 
-def _download_paths() -> list[tuple[str, str]]:
-    """(label, path) for the dev test folders, plus one for the whole folder.
+def _import_paths() -> list[tuple[str, str]]:
+    """returns a list of (label, path) for the import_paths in config file"""
 
-    Empty when the folder doesn't exist, so the buttons only show up in a dev checkout.
-    """
-    download_paths = config["jar"]["download_paths"]
-    if not download_paths:
+    import_paths = config["jar"]["import_paths"]
+    if not import_paths:
         return []
     folders = []
-    for path_label, path in download_paths.items():
+    for path_label, path in import_paths.items():
         folders.append((path_label, path.as_filename()))
     return folders
 
@@ -111,7 +109,7 @@ def render_idle(request, imports, *, note=None, error=None):
         request,
         "work_idle",
         pending=imports.pending_count(),
-        download_paths=_download_paths(),
+        download_paths=_import_paths(),
         note=note,
         error=error,
     )

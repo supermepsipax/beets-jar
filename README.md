@@ -2,16 +2,16 @@
 
 Crack open a fresh jar of beets!
 
-Beets-Jar is a beets plugin that serves a FastAPI application for those that tire of the terminal. Look at your library, edit your configuration, make decisions for a confused auto-tagger, and (eventually) much, much more!
+Beets-Jar is a beets plugin that serves a FastAPI application for those that tire of the terminal. Look at your library, edit your configuration, make decisions for a confused auto-tagger, initiate and control imports via external applications, and (eventually, maybe) much, much more!
 
 ## Why does this exist?
-I originally developed beets jar as a containerized version of beets (hence beets jar) but in early stages of developement I decided to switch to a beets plugin first design that can also be containerized. I feel like this fits in much better with the whole beets ethos that I have grown to love (and not everything needs to be containerized!), plus this way you keep your configuration, plugins, and manage your own dependencies (for better or for worse!)
+I originally developed beets jar as a containerized version of beets (hence beets jar) but in early stages of development I decided to switch to a beets plugin first design that can also be containerized. I feel like this fits in much better with the whole beets ethos that I have grown to love (and not everything needs to be containerized!), plus this way you keep your configuration, plugins, and manage your own dependencies (for better or for worse!)
 
-So that explains the stupid name, but **why** does this exist at all? The main reason comes from me wanting to have more control over beets via HTTP requests. I wanted a way to be able to intiate an import (and even potentially seed that import with extra info to help the auto-tagger), and also have beets communicate the status of the import back to the initiator and perhaps even shuttle user decisions back and forth. This proved to be non-trivial as the import process was very much not asynchronously friendly.
+So that explains the stupid name, but **why** does this exist at all? The main reason comes from me wanting to have more control over beets via HTTP requests. I wanted a way to be able to initiate an import (and even potentially seed that import with extra info to help the auto-tagger), and also have beets communicate the status of the import back to the initiator and perhaps even shuttle user decisions back and forth. This proved to be non-trivial as the import process was very much not asynchronously friendly.
 
 My secondary reasons are:
-    1. I like learning and love python and htmx
-    2. I want to contribute to beets in some form or another
+    - I like learning and love python and htmx
+    - I want to contribute to beets in some form or another
 
 ## Similar Projects
 Of course 
@@ -22,7 +22,7 @@ First install beets jar
 TODO: Install Command
 ```
 
-Configure your beets configuration:
+beets config:
 ```yaml
 plugins:
   - jar
@@ -32,8 +32,6 @@ jar:
  port: 7734
  import_paths:
     - Downloads: /home/user/downloads
-
-
 ```
 
 Start the FastAPI application with:

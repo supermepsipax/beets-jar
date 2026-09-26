@@ -61,6 +61,7 @@ SWEEP = {
 
 
 class ImportRegistry:
+    """In memory register for all active/finished imports"""
     def __init__(self, max_finished: int = 50):
         self.sessions: dict[str, SessionState] = {}
         self.version = 0
@@ -137,6 +138,7 @@ class ImportRegistry:
 
         session_state.version += 1
         self._notify()
+
     # ---- queries ----
     def get_task(self, session_id: str, task_id: str) -> TaskState | None:
         session_state = self.sessions.get(session_id)

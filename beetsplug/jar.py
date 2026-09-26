@@ -38,7 +38,10 @@ class JarPlugin(BeetsPlugin):
         self.config.add({
             "host": "127.0.0.1",
             "port": 7734,
-            "download_paths": {},
+            "import_paths": {},
+            "editor": {
+                "keymap": "default",
+            },
         })
         for event_name, phase in TASK_PHASES.items():
             self.register_listener(event_name, self._make_handler(phase))
