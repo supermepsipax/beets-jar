@@ -1,29 +1,45 @@
 from __future__ import annotations
-from app.models.queues import QueueStorageType
-import uuid
-from app.models import QueueStorage, QueueStorageItem, WebChoice, ChoiceType
-from beets.exceptions import UserError
 
+from uuid import uuid4
+from queue import Queue
 from collections import Counter
 from itertools import chain
-from typing import TYPE_CHECKING, Literal, Iterator
+from typing import TYPE_CHECKING, Iterator, Literal
+
 from beets import config, importer, logging, plugins, ui
 from beets.autotag import (
     AlbumMatch,
+    Proposal,
     Recommendation,
     TrackMatch,
     tag_album,
     tag_item,
 )
+from beets.exceptions import UserError
 from beets.importer import DuplicateAction, SingletonImportTask
 from beets.library import Album
 from beets.util import PromptChoice, displayable_path
-from beets.autotag import Proposal
 from beets.util.color import colorize
 from beets.util.units import human_bytes, human_seconds_short
 
+from app.imports import event_bus
+from app.imports.events import (
+    Prompt,
+    PromptClosed,
+    PromptOpened,
+    SessionFinished,
+    SessionStarted,
+    SessionStatus,
+    TaskFinished,
+    TaskOutcome,
+)
+from app.imports.snapshot import task_key
+from app.models import ChoiceType, QueueStorage, QueueStorageItem, WebChoice
+from app.models.queues import QueueStorageType
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
     from beets.importer import ImportSession, ImportTask
     from beets.library import AlbumOrItem, Item
     from beets.util import PathBytes
@@ -41,18 +57,37 @@ class WebImportSession(importer.ImportSession):
     based on unique identifiers.
     """
 
-    def __init__(self, *args, queues: QueueStorage, mbid: str = "", **kwargs):
-        super().__init__(*args,  **kwargs)
-        self.session_id = uuid.uuid4().hex
-        self.queues = queues
-        self._queue_ids = []
+    def __init__(self, *args, mbid: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session_id = uuid4().hex
+        self._aborted = False
 
     def run(self):
+        event_bus.emit(
+            SessionStarted(
+                self.session_id, tuple(displayable_path(p) for p in self.paths)
+            )
+        )
+        status, error = SessionStatus.COMPLETED, None
         try:
             super().run()
+        except Exception as e:
+            status, error = SessionStatus.FAILED, str(e)
+            log.exception(f"Import session {self.session_id} failed")
+
         finally:
-            for qid in self._queue_ids:
-                self.queues.delete(qid)
+            if self._aborted:
+                status = SessionStatus.ABORTED
+            event_bus.emit(SessionFinished(self.session_id, status, error))
+
+    def _ask(self, kind, task=None, choices=None, **extra):
+        prompt = Prompt(uuid4().hex, kind, Queue(), task, choices or [], **extra)
+        task_id = task_key(task) if task is not None else None
+        event_bus.emit(PromptOpened(self.session_id, task_id, prompt))
+        try:
+            return prompt.reply.get()
+        finally:
+            event_bus.emit(PromptClosed(self.session_id, prompt.prompt_id))
 
     def choose_match(self, task: ImportTask) -> AlbumMatch | importer.Action:
         """Given an initial autotagging of items, go through an interactive
@@ -60,23 +95,20 @@ class WebImportSession(importer.ImportSession):
         AlbumMatch object, ASIS, or SKIP.
         """
         # Show what we're tagging.
-        #TODO: Figure out how to hook into import_task_before_choice event to broadcast info
+        # TODO: Figure out how to hook into import_task_before_choice event to broadcast info
         # prompt = f"{displayable_path(task.paths, "\n")} ({len(task.items)} items)"
         # print(prompt)
 
         # Let plugins display info or prompt the user before we go through the
         # process of selecting candidate.
-        results = plugins.send(
-            "import_task_before_choice", session=self, task=task
-        )
+        results = plugins.send("import_task_before_choice", session=self, task=task)
         actions = [action for action in results if action]
 
         if len(actions) == 1:
             return actions[0]
         if len(actions) > 1:
             raise plugins.PluginConflictError(
-                "Only one handler for `import_task_before_choice` may return "
-                "an action."
+                "Only one handler for `import_task_before_choice` may return an action."
             )
 
         # Take immediate action if appropriate.
@@ -93,9 +125,9 @@ class WebImportSession(importer.ImportSession):
 
         # Loop until we have a choice.
 
-        queue_item = QueueStorageItem(task, queue_type=QueueStorageType.CANDIDATE)
-        queue_id = self.queues.store(queue_item)
-        self._queue_ids.append(queue_id)
+        # queue_item = QueueStorageItem(task, queue_type=QueueStorageType.CANDIDATE)
+        # queue_id = self.queues.store(queue_item)
+        # self._queue_ids.append(queue_id)
 
         while True:
             # Ask for a choice from the user. The result of
@@ -103,10 +135,11 @@ class WebImportSession(importer.ImportSession):
             # `AlbumMatch` object for a specific selection, or a
             # `PromptChoice`.
             choices = self._get_choices(task)
-            self.queues.update(queue_id, task, choices)
+            # self.queues.update(queue_id, task, choices)
+            web_choice: WebChoice = self._ask("candidate", task, choices)
 
             # WAIT FOR USER RESPONSE
-            web_choice: WebChoice = queue_item.queue.get()
+            # web_choice: WebChoice = queue_item.queue.get()
 
             # We have a specific match selection.
             # or, basic choices that require no more action here.
@@ -115,20 +148,30 @@ class WebImportSession(importer.ImportSession):
                 and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
-                self.queues.delete(queue_id)
+                # self.queues.delete(queue_id)
                 return web_choice.choice
 
             # Plugin-provided choices. We invoke the associated callback
             # function.
-            if isinstance(web_choice.choice, PromptChoice) and web_choice.choice.callback:
+            if (
+                isinstance(web_choice.choice, PromptChoice)
+                and web_choice.choice.callback
+            ):
                 if ChoiceType(web_choice.choice.short) == ChoiceType.SEARCH:
-                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["artist"], web_choice.follow_up_info["query"])
+                    post_choice = web_choice.choice.callback(
+                        self,
+                        task,
+                        web_choice.follow_up_info["artist"],
+                        web_choice.follow_up_info["query"],
+                    )
                 elif ChoiceType(web_choice.choice.short) == ChoiceType.ID:
-                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["mbid"])
+                    post_choice = web_choice.choice.callback(
+                        self, task, web_choice.follow_up_info["mbid"]
+                    )
                 else:
                     post_choice = web_choice.choice.callback(self, task)
                 if isinstance(post_choice, importer.Action):
-                    self.queues.delete(queue_id)
+                    # self.queues.delete(queue_id)
                     return post_choice
                 elif isinstance(post_choice, Proposal):
                     task.candidates = post_choice.candidates
@@ -138,13 +181,10 @@ class WebImportSession(importer.ImportSession):
                 # We have a candidate! Finish tagging. Here, choice is an
                 # AlbumMatch object.
                 assert isinstance(web_choice.choice, AlbumMatch)
-                self.queues.delete(queue_id)
+                # self.queues.delete(queue_id)
                 return web_choice.choice
 
-
-    def choose_item(
-        self, task: SingletonImportTask
-    ) -> TrackMatch | importer.Action:
+    def choose_item(self, task: SingletonImportTask) -> TrackMatch | importer.Action:
         """Ask the user for a choice about tagging a single item. Returns
         either an action constant or a TrackMatch object.
         """
@@ -164,15 +204,15 @@ class WebImportSession(importer.ImportSession):
         if action is not None:
             return action
 
-        queue_item = QueueStorageItem(task)
-        queue_id = self.queues.store(queue_item)
-        self._queue_ids.append(queue_id)
+        # queue_item = QueueStorageItem(task)
+        # queue_id = self.queues.store(queue_item)
+        # self._queue_ids.append(queue_id)
 
         while True:
             # Ask for a choice.
             choices = self._get_choices(task)
-            self.queues.update(queue_id, task, choices)
-            web_choice: WebChoice = queue_item.queue.get()
+            # self.queues.update(queue_id, task, choices)
+            web_choice: WebChoice = self._ask("candidate", task, choices)
             # choice = choose_candidate(
             #     # TODO: introduce AlbumImportTask to remove this ignore
             #     task.candidates,  # type: ignore[arg-type]
@@ -188,16 +228,26 @@ class WebImportSession(importer.ImportSession):
                 and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
-                self.queues.delete(queue_id)
+                # self.queues.delete(queue_id)
                 return web_choice.choice
 
             # Plugin-provided web_choice.choices. We invoke the associated callback
             # function.
-            if isinstance(web_choice.choice, PromptChoice) and web_choice.choice.callback:
+            if (
+                isinstance(web_choice.choice, PromptChoice)
+                and web_choice.choice.callback
+            ):
                 if ChoiceType(web_choice.choice.short) == ChoiceType.SEARCH:
-                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["artist"], web_choice.follow_up_info["query"])
+                    post_choice = web_choice.choice.callback(
+                        self,
+                        task,
+                        web_choice.follow_up_info["artist"],
+                        web_choice.follow_up_info["query"],
+                    )
                 elif ChoiceType(web_choice.choice.short) == ChoiceType.ID:
-                    post_choice = web_choice.choice.callback(self, task, web_choice.follow_up_info["mbid"])
+                    post_choice = web_choice.choice.callback(
+                        self, task, web_choice.follow_up_info["mbid"]
+                    )
                 else:
                     post_choice = web_choice.choice.callback(self, task)
                 if isinstance(post_choice, importer.Action):
@@ -214,6 +264,17 @@ class WebImportSession(importer.ImportSession):
             for dup in items:
                 summary_string += f"\n  {dup}"
         return summary_string
+
+    def get_duplicate_action(self, task, found_duplicates) -> DuplicateAction:
+        action = super().get_duplicate_action(task, found_duplicates)
+        if action is DuplicateAction.ASK:
+            action = DuplicateAction(self._get_duplicate_action_from_user(task, found_duplicates))
+
+        if action is DuplicateAction.SKIP:
+            event_bus.emit(TaskFinished(self.session_id, task_key(task), TaskOutcome.SKIPPED, "duplicate"))
+        elif action is DuplicateAction.MERGE:
+            event_bus.emit(TaskFinished(self.session_id, task_key(task), TaskOutcome.MERGED))
+        return action
 
     def _get_duplicate_action_from_user(
         self, task: importer.ImportTask, found_duplicates: list[AlbumOrItem]
@@ -235,51 +296,46 @@ class WebImportSession(importer.ImportSession):
 
         # Print some detail about the existing and new items so the
         # user can make an informed decision.
-        duplicate_summary = {"old" : []}
+        duplicate_summary = {"old": []}
         for duplicate in found_duplicates:
-            duplicate_summary["old"].append(self._report_item_summary(
-                "Old",
-                (
-                    list(duplicate.items())
-                    if isinstance(duplicate, Album)
-                    else [duplicate]
-                ),
-                is_album,
-            ))
+            duplicate_summary["old"].append(
+                self._report_item_summary(
+                    "Old",
+                    (
+                        list(duplicate.items())
+                        if isinstance(duplicate, Album)
+                        else [duplicate]
+                    ),
+                    is_album,
+                )
+            )
 
-        duplicate_summary["new"] = self._report_item_summary("New", task.imported_items(), is_album)
-        queue_item = QueueStorageItem(task, choices, QueueStorageType.DUPLICATE, duplicate_summary)
-        queue_id = self.queues.store(queue_item)
-        self._queue_ids.append(queue_id)
+        duplicate_summary["new"] = self._report_item_summary(
+            "New", task.imported_items(), is_album
+        )
+        # queue_item = QueueStorageItem(
+        #     task, choices, QueueStorageType.DUPLICATE, duplicate_summary
+        # )
+        # queue_id = self.queues.store(queue_item)
+        # self._queue_ids.append(queue_id)
 
-        web_choice: WebChoice = queue_item.queue.get()
-
+        web_choice: WebChoice = self._ask("duplicated", task, choices, duplicate_summary=duplicate_summary)
 
         assert isinstance(web_choice.choice, PromptChoice)
-            
-        self.queues.delete(queue_id)
+
+        # self.queues.delete(queue_id)
         return web_choice.choice.short
         # return input_options(DuplicateAction.strict_options())
 
-    def get_duplicate_action(
-        self, task: importer.ImportTask, found_duplicates: list[AlbumOrItem]
-    ) -> DuplicateAction:
-        action = super().get_duplicate_action(task, found_duplicates)
-        if action is DuplicateAction.ASK:
-            return DuplicateAction(
-                self._get_duplicate_action_from_user(task, found_duplicates)
-            )  # type: ignore[call-arg]
-
-        return action
-
     def should_resume(self, path: PathBytes) -> bool:
-        queue_item = QueueStorageItem(queue_type=QueueStorageType.RESUME, path=displayable_path(path))
-        queue_id = self.queues.store(queue_item)
-        self._queue_ids.append(queue_id)
-        choice = queue_item.queue.get()
-        self.queues.delete(queue_id)
-        return choice
-
+        # queue_item = QueueStorageItem(
+        #     queue_type=QueueStorageType.RESUME, path=displayable_path(path)
+        # )
+        # queue_id = self.queues.store(queue_item)
+        # self._queue_ids.append(queue_id)
+        # choice = queue_item.queue.get()
+        # self.queues.delete(queue_id)
+        return self._ask("resume", path=displayable_path(path))
 
     def _get_choices(self, task: ImportTask) -> list[PromptChoice]:
         """Get the list of prompt choices that should be presented to the
@@ -304,12 +360,8 @@ class WebImportSession(importer.ImportSession):
         ]
         if task.is_album:
             choices += [
-                PromptChoice(
-                    "t", "as Tracks", lambda s, t: importer.Action.TRACKS
-                ),
-                PromptChoice(
-                    "g", "Group albums", lambda s, t: importer.Action.ALBUMS
-                ),
+                PromptChoice("t", "as Tracks", lambda s, t: importer.Action.TRACKS),
+                PromptChoice("g", "Group albums", lambda s, t: importer.Action.ALBUMS),
             ]
         choices += [
             # TODO: introduce beets.autotag.Candidates to remove these ignores
@@ -322,11 +374,7 @@ class WebImportSession(importer.ImportSession):
 
         # Send the before_choose_candidate event and flatten list.
         extra_choices = list(
-            chain(
-                *plugins.send(
-                    "before_choose_candidate", session=self, task=task
-                )
-            )
+            chain(*plugins.send("before_choose_candidate", session=self, task=task))
         )
 
         # Add a "dummy" choice for the other baked-in option, for
@@ -341,9 +389,7 @@ class WebImportSession(importer.ImportSession):
         short_letters = [c.short for c in all_choices]
         if len(short_letters) != len(set(short_letters)):
             # Duplicate short letter has been found.
-            duplicates = [
-                i for i, count in Counter(short_letters).items() if count > 1
-            ]
+            duplicates = [i for i, count in Counter(short_letters).items() if count > 1]
             for short in duplicates:
                 # Keep the first of the choices, removing the rest.
                 dup_choices = [c for c in all_choices if c.short == short]
@@ -435,6 +481,7 @@ def _summary_judgment(rec: Recommendation) -> importer.Action | None:
     elif action == importer.Action.ASIS:
         print("Importing as-is.")
     return action
+
 
 def choose_candidate(
     candidates,
@@ -587,6 +634,7 @@ def web_search(session, task, artist, name):
         return prop
     return tag_item(task.item, artist.strip(), name.strip())
 
+
 def web_id(session, task, mbid):
     """Get a new `Proposal` using a manually-entered ID.
 
@@ -598,10 +646,10 @@ def web_id(session, task, mbid):
     return tag_item(task.item, search_ids=mbid.split())
 
 
-
 def abort_action(session: ImportSession, task: ImportTask) -> None:
     """A prompt choice callback that aborts the importer."""
     raise importer.ImportAbortError()
+
 
 def input_(prompt=None):
     """Like `input`, but decodes the result to a Unicode string.
@@ -679,10 +727,7 @@ def input_options(
         # Mark the option's shortcut letter for display.
         if not require and (
             (default is None and not numrange and first)
-            or (
-                isinstance(default, str)
-                and found_letter.lower() == default.lower()
-            )
+            or (isinstance(default, str) and found_letter.lower() == default.lower())
         ):
             # The first option is the default; mark it.
             show_letter = f"[{found_letter.upper()}]"
@@ -737,9 +782,7 @@ def input_options(
         # Start prompt with U+279C: Heavy Round-Tipped Rightwards Arrow
         prompt = colorize("action", "\u279c ")
         line_length = 0
-        for i, (part, length) in enumerate(
-            zip(prompt_parts, prompt_part_lengths)
-        ):
+        for i, (part, length) in enumerate(zip(prompt_parts, prompt_part_lengths)):
             # Add punctuation.
             if i == len(prompt_parts) - 1:
                 part += colorize("action_description", "?")
@@ -796,7 +839,3 @@ def input_options(
 
         # Prompt for new input.
         resp = input_(fallback_prompt)
-
-
-
-

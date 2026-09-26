@@ -1,0 +1,21 @@
+<div class="duplicate-summary">
+	<p>This album is already in the library!</p>
+	{% for duplicate in prompt.duplicate_summary.old %}
+	<p>{{ duplicate }}</p>
+	{% endfor %}
+	<p>{{ prompt.duplicate_summary.new }}
+
+</div>
+<div id="status-message-{{ s.session_id }}" class="import-status-message"></div>
+<div class="import-actions">
+	{% for choice in prompt.choices %}
+	<form hx-post="/api/import/sessions/{{ s.session_id }}/prompts/{{ prompt.prompt_id }}/choose" hx-target="#status-message-{{ s.session_id }}" hx-swap="outerHTML">
+		<input type="hidden" name="type" value="action">
+		<input type="hidden" name="value" value="{{ choice.short }}">
+
+		<button type="submit">
+			{{ choice.long }}
+		</button>
+	</form>
+	{% endfor %}
+</div>

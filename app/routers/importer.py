@@ -36,27 +36,26 @@ async def search_page(
 @router.get("/import/queues/stream", response_class=EventSourceResponse)
 async def queues_stream(
         request: Request,
-        queues: QueueStorage = Depends(get_queues),
+        # queues: QueueStorage = Depends(get_queues),
+        imports = Depends(get_imports),
 ):
     last_version = -1
     while True:
-        if queues.closing or await request.is_disconnected():
+        if imports.closing or await request.is_disconnected():
             break
-        current_version = queues.version
+        current_version = imports.version
         if current_version != last_version:
             last_version = current_version
-            #TODO: Remove
-            # print("queue is updated")
-            html = templates.get_template("queues/queue_list.html").render(
+            html = templates.get_template("imports/session_list.html").render(
                 request=request,
-                queues=queues,
+                sessions=list(imports.sessions.values()),
             )
             
             yield ServerSentEvent(raw_data=html)
         
         try:
             await asyncio.wait_for(
-                    queues.wait_for_change(last_version),
+                    imports.wait_for_change(last_version),
                     timeout=30
             )
         except TimeoutError:
@@ -73,13 +72,54 @@ async def start_import(
     import_session = WebImportSession(
             lib = lib,
             paths = [path],
-            queues = queues,
             loghandler = None,
             query = None,
-            
     )
     import_thread = threading.Thread(target=import_session.run, daemon=True)
     import_thread.start()
+
+    return {"session_id": import_session.session_id}
+
+@router.post("/api/import/sessions/{session_id}/prompts/{prompt_id}/choose")
+async def choose(
+    session_id: str,
+    prompt_id: str,
+    type: str = Form(...),
+    value: str = Form(...),
+    artist: str = Form(""),
+    query: str = Form(""),
+    mbid: str = Form(""),
+    imports: ImportRegistry = Depends(get_imports),
+):
+    prompt = imports.find_prompt(session_id, prompt_id)
+    if prompt is None:
+        raise HTTPException(404, "Prompt not found (if may have been replaced)")
+    if prompt.answered:
+        raise HTTPException(409, "Prompt already answered")
+    reply = _build_reply(prompt, type, value, artist, query, mbid)
+    prompt.answered = True
+    prompt.reply.put(reply)
+    return HTMLResponse("<p> Choice submitted. </p>")
+
+def _build_reply(prompt, type, value, artist, query, mbid):
+    if prompt.kind == "resume":
+        return value == "yes"
+
+    if prompt.kind == "candidate" and type == "candidate":
+        candidates = prompt.task.candidates
+        index = int(value) - 1
+        if not 0 <= index < len(candidates):
+            raise HTTPException(400, "Unknown candidate")
+        return WebChoice(candidates[index], {})
+
+    choice = next((c for c in prompt.choices if c.short == value), None)
+    if choice is None:
+        raise HTTPException(400, "Unknown action")
+    if prompt.kind == "candidate" and choice.short == ChoiceType.ID and mbid:
+        return WebChoice(choice, {"mbid": mbid})
+    if prompt.kind == "candidate" and choice.short == ChoiceType.SEARCH and artist and query:
+        return WebChoice(choice, {"artist": artist, "query": query})
+    return WebChoice(choice, {})
     
 @router.post("/api/import/{queue_id}/choose")
 async def make_import_choice(
