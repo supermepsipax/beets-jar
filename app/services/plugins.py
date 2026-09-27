@@ -62,6 +62,8 @@ def get_loaded_plugins():
             continue
         web_plugins[plugin.name] = WebPlugin(plugin)
 
+    return web_plugins
+
 
 
 

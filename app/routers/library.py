@@ -1,16 +1,19 @@
-from app.services import get_loaded_plugins
-from beets.dbcore import Results
-from typing import Optional
-from beets.library import Library, Album, Item
-from app import get_lib, TEMPLATES_DIR
 import logging
-from fastapi import APIRouter, Request, Depends
-from fastapi.templating import Jinja2Templates
+from typing import Optional
+
+from beets.dbcore import Results
+from beets.library import Album, Item, Library
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+
+from app import TEMPLATES_DIR, get_lib
+from app.services import get_loaded_plugins
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
 templates = Jinja2Templates(TEMPLATES_DIR)
+
 
 @router.get("/", response_class=HTMLResponse)
 async def index(
@@ -18,10 +21,10 @@ async def index(
 ):
     return RedirectResponse(url="/library", status_code=302)
 
+
 @router.get("/library", response_class=HTMLResponse)
 async def library_page(
     request: Request,
-    lib: Library = Depends(get_lib),
 ):
     """Main library page."""
 
@@ -30,13 +33,28 @@ async def library_page(
     response = templates.TemplateResponse(
         request,
         "library.html",
+        {},
+    )
+    return response
+
+
+@router.get("/library/work", response_class=HTMLResponse)
+async def library_work_area(
+    request: Request,
+    lib: Library = Depends(get_lib),
+):
+    """Main library page."""
+
+    response = templates.TemplateResponse(
+        request,
+        "library/work_idle.html",
         {
             "item_count": len(lib.items()),
             "album_count": len(lib.albums()),
         },
-
     )
     return response
+
 
 @router.get("/api/items", response_class=HTMLResponse)
 async def get_items(
@@ -46,7 +64,6 @@ async def get_items(
     album: bool = False,
 ):
     """Main library page."""
-
 
     if album:
         albums: Results[Album] = lib.albums(query)
@@ -62,6 +79,5 @@ async def get_items(
             "items": items,
             "albums": albums,
         },
-
     )
     return response

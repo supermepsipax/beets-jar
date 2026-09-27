@@ -1,15 +1,22 @@
 import asyncio
-import signal
 import contextlib
+import signal
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+
 from beets import config as beets_config
 from beets import plugins as beets_plugins
 from beets.library import Library
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
 from app import STATIC_DIR
-from app.routers import library_router, import_router, configuration_router
-from app.imports import event_bus, ImportRegistry
+from app.imports import ImportRegistry, event_bus
+from app.routers import (
+    configuration_router,
+    import_router,
+    library_router,
+    plugins_router,
+)
 
 
 def create_app(lib: Library | None = None) -> FastAPI:
@@ -71,6 +78,7 @@ def create_app(lib: Library | None = None) -> FastAPI:
     app.include_router(library_router)
     app.include_router(import_router)
     app.include_router(configuration_router)
+    app.include_router(plugins_router)
     return app
 
 

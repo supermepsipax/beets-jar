@@ -1,0 +1,25 @@
+<div class="library-work-idle">
+	<div class="library-stats">
+		<div class="library-stat-block">
+			<label class="library-stat-number">{{ item_count }}</label>
+			<label class="library-state-text">Tracks</label>
+		</div>
+		<div class="library-stat-block">
+			<label class="library-stat-number">{{ album_count }}</label>
+			<label class="library-state-text">Album{% if album_count > 1%}s{% endif %}</label>
+		</div>
+	</div>
+	<form class="library-query-block"
+		hx-get="/api/items" 
+		hx-trigger="input delay:300ms, change target:input[type='checkbox']" 
+		hx-target="#results">
+		<div class="manual-action-row">
+			<label for="text">Query: </label>
+			<input type="text" name="query" value=""><br>
+		</div>
+		<label for="album">Show Only Albums: </label>
+		<input type="checkbox" name="album"><br>
+	</form>
+	<div id="results">
+	</div>
+</div>

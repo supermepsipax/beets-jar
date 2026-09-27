@@ -3,25 +3,30 @@
 {% block title %}Library - Beets-Jar{% endblock %}
 
 {% block content %}
-<div class="library-stats">
-	<div class="library-stat-block">
-		<label class="library-stat-number">{{ item_count }}</label>
-		<label class="library-state-text">Tracks</label>
+<div class="library-layout" x-data="{ left: false, right: false }" @keydown.escape.window="left = false; right = false">
+
+	{# Mobile only (hidden by CSS on desktop) #}
+	<div class="library-toolbar">
+		<button type="button" class="drawer-toggle drawer-toggle-left" @click="left = !left; right = false">
+			☰Plugins
+		</button>
+		<button type="button" class="drawer-toggle drawer-toggle-right" @click="right = !right; left = false">
+			Processes
+		</button>
 	</div>
-	<div class="library-stat-block">
-		<label class="library-stat-number">{{ album_count }}</label>
-		<label class="library-state-text">Album{% if album_count > 1%}s{% endif %}</label>
-	</div>
-</div>
-<form 
-	hx-get="/api/items" 
-	hx-trigger="input delay:300ms, change target:input[type='checkbox']" 
-	hx-target="#results">
-	<label for="text">Query: </label>
-	<input type="text" name="query" value=""><br>
-	<label for="album">Show Only Albums: </label>
-	<input type="checkbox" name="album"><br>
-</form>
-<div id="results">
+	<div class="drawer-backdrop" x-show="left || right" x-cloak @click="left = false; right = false"></div>
+
+	<aside id="plugin-panel" class="library-panel drawer" :class="{ 'is-open': left }"
+		@click="if ($event.target.closest('.needs-you')) left = false">
+		<h2 class="panel-title">Plugins</h2>
+		<div hx-get="/plugins/all" hx-trigger="load"></div>
+	</aside>
+
+	<section id="work-area" hx-get="/library/work" hx-trigger="load"></section>
+
+	<aside id="processes" class="library-panel drawer" :class="{ 'is-open': right }">
+		<h2 class="panel-title">Processes</h2>
+		<!-- <div hx-get="/library/stream/processes" hx-trigger="load"></div> -->
+	</aside>
 </div>
 {% endblock %}
