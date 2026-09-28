@@ -13,9 +13,18 @@
 				<button type="submit" class="button-secondary" disabled>Save</button>
 			</div>
 		</div>
+		<script>
+			// this will hide the fallback textarea until/if CodeMirror replaces it
+			document.currentScript.parentElement.classList.add("is-loading");
+		</script>
 		<textarea name="yaml_text" spellcheck="false" wrap="off">{{ yaml_text }}</textarea>
 		<div id="config-editor" data-keymap="{{ keymap }}"></div>
 	</form>
 </div>
-<script type="module" src="/static/config-editor.js"></script>
+<script type="module">
+	import("/static/config-editor.js").catch((error) => {
+		console.error("Config editor failed to load; using the plain textarea.", error);
+		document.getElementById("config-form").classList.remove("is-loading");
+	});
+</script>
 {% endblock %}

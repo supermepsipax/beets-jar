@@ -1085,6 +1085,15 @@ button.task-row.needs-you:hover {
 }
 .config-card textarea:focus { transform: none; box-shadow: none; }
 
+/* While CodeMirror loads: keep the textarea's space (no layout jump) but not
+   its content, on the editor's background colour. */
+.config-card.is-loading textarea {
+	visibility: hidden;
+}
+.config-card.is-loading {
+	background: var(--bg);
+}
+
 @media (max-width: 900px) {
 	.config-page { padding: 16px; }
 }

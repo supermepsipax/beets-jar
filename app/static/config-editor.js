@@ -1,5 +1,4 @@
-// CodeMirror editor for the configuration page; mirrors into the form's textarea.
-import { EditorView, basicSetup, keymap, yaml } from "/static/cm.js";
+import { EditorView, basicSetup, indentWithTab, keymap, yaml } from "/static/cm.js";
 import { configTheme } from "/static/config-theme.js";
 
 const form = document.getElementById("config-form");
@@ -7,11 +6,11 @@ const textarea = form.elements.yaml_text;
 const saveButton = form.querySelector("button[type=submit]");
 const bar = form.querySelector(".config-bar");
 const editorElement = document.getElementById("config-editor");
-// Vim needs a physical keyboard. Browsers can't detect one, so "has a
-// mouse or trackpad" is the proxy: true on desktops and laptops, false on phones.
-const vimCapable = matchMedia("(any-pointer: fine)").matches;
+// Browsers can't detect a physical keyboard, so "has a mouse or trackpad" is
+// the proxy
+const hasFinePointer = matchMedia("(any-pointer: fine)").matches;
 const keymapExtensions =
-	editorElement.dataset.keymap === "vim" && vimCapable ? await vimMode() : [];
+	editorElement.dataset.keymap === "vim" && hasFinePointer ? await vimMode() : [];
 
 let saved = textarea.value;   // what's on disk
 let submitted = saved;        // what the in-flight save sent
@@ -32,7 +31,12 @@ export const view = new EditorView({
 	parent: editorElement,
 	extensions: [
 		...keymapExtensions,
-		keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (form.requestSubmit(), true) }]),
+		keymap.of([
+			{ key: "Mod-s", preventDefault: true, run: () => (form.requestSubmit(), true) },
+			// Tab/Shift-Tab indent by indentUnit (two spaces; YAML forbids tabs).
+			// Esc then Tab still moves focus out, for keyboard-only users.
+			indentWithTab,
+		]),
 		basicSetup,
 		yaml(),
 		configTheme,
@@ -40,6 +44,8 @@ export const view = new EditorView({
 	],
 });
 textarea.hidden = true;
+form.classList.remove("is-loading");
+if (hasFinePointer) view.focus();
 
 function sync() {
 	textarea.value = view.state.doc.toString();
