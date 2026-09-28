@@ -1,0 +1,19 @@
+{% macro toggle(name, on="on", off="off", checked=false, label="", value="1", attrs="", cls="") %}
+<label class="toggle {{ cls }}" {% if label %} aria-label="{{ label }}"{% endif %}>
+	<input type="checkbox" name="{{ name }}" value="{{ value }}" {% if checked %} checked{% endif %} {{ attrs | safe }}>
+	<span class="toggle-seg toggle-on">{{ on }}</span>
+	<span class="toggle-seg toggle-off">{{ off }}</span>
+</label>
+{% endmacro %}
+
+{% macro segmented(name, options, selected=none, label=none, attrs="", cls="") -%}
+<div class="toggle segmented {{ cls }}" role="radiogroup"{% if label %} aria-label="{{ label }}"{% endif %}>
+	{%- for option in options %}
+	{%- if option is string %}{% set value, text = option, option %}{% else %}{% set value, text = option %}{% endif %}
+	<label class="toggle-seg">
+		<input type="radio" name="{{ name }}" value="{{ value }}"{% if value == selected %} checked{% endif %} {{ attrs | safe }}>
+		{{ text }}
+	</label>
+	{%- endfor %}
+</div>
+{%- endmacro %}

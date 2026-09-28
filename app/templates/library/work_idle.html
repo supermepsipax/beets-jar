@@ -1,3 +1,4 @@
+{% from "macros/controls.html" import toggle %}
 <div class="library-work-idle">
 	<div class="library-stats">
 		<div class="library-stat-block">
@@ -11,15 +12,13 @@
 	</div>
 	<form class="library-query-block"
 		hx-get="/api/items" 
-		hx-trigger="input delay:300ms, change target:input[type='checkbox']" 
+		hx-trigger="input delay:250ms, change target:input[type='checkbox']" 
 		hx-target="#results">
 		<div class="manual-action-row">
 			<label for="text">Query: </label>
 			<input type="text" name="query" value=""><br>
 		</div>
-		<label for="album">Show Only Albums: </label>
-		<input type="checkbox" name="album"><br>
+		{{ toggle("album", on="Albums", off="Items", checked=true, label="Search albums or items") }}
 	</form>
-	<div id="results">
-	</div>
+	<div id="results" class="library-results"></div>
 </div>

@@ -1,11 +1,14 @@
-{% for name, plugin in plugins %}
+
+{%- for name, plugin in plugins %}
 <div class="plugin-panel-item">
 	<h3 class="plugin-name">{{ name }}</h3>
-	{% for command in plugin.command_list %}
-		<span class="command-name">{{ command.command }}</span>
-	{% endfor %}
-
+	{%- for command in plugin.command_list %}
+	<span class="command-name">{{ command.command }}</span>
+		{%- for command_option in command.command_options %}
+		<span class="command-name">{{ command_option.name }}</span>
+		{%- endfor %}
+	{%- endfor %}
 </div>
-{% else %}
+{%- else %}
 <p class="panel-empty">No loaded plugins.</p>
-{% endfor %}
+{%- endfor %}
