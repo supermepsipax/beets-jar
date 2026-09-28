@@ -7,7 +7,11 @@ const textarea = form.elements.yaml_text;
 const saveButton = form.querySelector("button[type=submit]");
 const bar = form.querySelector(".config-bar");
 const editorElement = document.getElementById("config-editor");
-const keymapExtensions = editorElement.dataset.keymap === "vim" ? await vimMode() : [];
+// Vim needs a physical keyboard. Browsers can't detect one, so "has a
+// mouse or trackpad" is the proxy: true on desktops and laptops, false on phones.
+const vimCapable = matchMedia("(any-pointer: fine)").matches;
+const keymapExtensions =
+	editorElement.dataset.keymap === "vim" && vimCapable ? await vimMode() : [];
 
 let saved = textarea.value;   // what's on disk
 let submitted = saved;        // what the in-flight save sent

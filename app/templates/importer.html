@@ -3,7 +3,44 @@
 {% block title %}Import - Beets-Jar{% endblock %}
 
 {% block content %}
-<div class="import-layout" x-data="{ left: false, right: false }" @keydown.escape.window="left = false; right = false">
+{% from "macros/controls.html" import toggle %}
+<script>
+	// Page state for the import layout: mobile drawers + auto mode.
+	// Auto mode pulls the next prompt into the work area whenever it is idle and
+	// something needs the user. It never replaces a prompt (or "Searching…")
+	// that is already showing, so the server's follow-up order is untouched.
+	function importPage() {
+		return {
+			left: false,
+			right: false,
+			auto: false,
+			loading: false,
+
+			init() {
+				try { this.auto = localStorage.getItem("import-auto") === "1"; } catch {}
+				this.$watch("auto", (on) => {
+					try { localStorage.setItem("import-auto", on ? "1" : "0"); } catch {}
+					this.pull();
+				});
+				// Runs after every in-progress panel update from the stream
+				new MutationObserver(() => this.pull())
+					.observe(document.getElementById("in-progress-rows"), { childList: true, subtree: true });
+			},
+
+			pull() {
+				if (!this.auto || this.loading) return;
+				if (!document.querySelector('#work-area [data-work="idle"]')) return;
+				if (!document.querySelector("#in-progress-rows .needs-you")) return;
+				this.loading = true;
+				Promise.resolve(htmx.ajax("GET", "/import/work", { target: "#work-area" }))
+					.catch(() => {})
+					.finally(() => { this.loading = false; });
+			},
+		};
+	}
+</script>
+
+<div class="import-layout" x-data="importPage()" @keydown.escape.window="left = false; right = false">
 
 	{# Mobile only (hidden by CSS on desktop) #}
 	<div class="import-toolbar">
@@ -18,14 +55,21 @@
 
 	<aside id="in-progress" class="import-panel drawer" :class="{ 'is-open': left }"
 		@click="if ($event.target.closest('.needs-you')) left = false">
-		<h2 class="panel-title">In Progress</h2>
-		<div hx-get="/import/stream/in-progress" hx-trigger="load"></div>
+		<div class="panel-head">
+			<h2 class="panel-title">In Progress</h2>
+			{{ toggle("auto", on="Auto", off="Manual", label="Show prompts automatically", attrs='x-model="auto"', cls="toggle-sm") }}
+		</div>
+		<div id="in-progress-rows" hx-get="/import/stream/in-progress" hx-trigger="load"></div>
 	</aside>
 
 	<section id="work-area" hx-get="/import/work" hx-trigger="load"></section>
 
 	<aside id="finished" class="import-panel drawer" :class="{ 'is-open': right }">
-		<h2 class="panel-title">Finished</h2>
+		<div class="panel-head">
+			<h2 class="panel-title">Finished</h2>
+			<button type="button" class="button-secondary button-sm" title="Clear all finished imports"
+				hx-get="/import/modal/clear" hx-target="#modal-root">Clear all</button>
+		</div>
 		<div hx-get="/import/stream/finished" hx-trigger="load"></div>
 	</aside>
 

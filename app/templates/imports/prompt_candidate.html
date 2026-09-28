@@ -8,12 +8,9 @@
 	{% endfor %}
 
 	{% for choice in prompt.choices if choice.short == "b" %}
-	<form class="work-actions-end" hx-post="{{ choose_url }}" hx-target="#work-area"
-		hx-confirm="Stop this whole import?">
-		<input type="hidden" name="type" value="action">
-		<input type="hidden" name="value" value="{{ choice.short }}">
-		<button type="submit" class="button-danger">{{ choice_label(choice) }}</button>
-	</form>
+	<button type="button" class="button-danger work-actions-end"
+		hx-get="/import/modal/abort/{{ session.session_id }}/{{ prompt.prompt_id }}"
+		hx-target="#modal-root">{{ choice_label(choice) }}</button>
 	{% endfor %}
 </div>
 

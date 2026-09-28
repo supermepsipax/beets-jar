@@ -214,6 +214,18 @@ class ImportRegistry:
         self._notify()
         return True
 
+    def finished_count(self) -> int:
+        return sum(1 for s in self.sessions.values() if s.status in FINISHED)
+
+    def dismiss_finished(self) -> int:
+        """Dismiss every finished session; running ones stay. Returns how many went."""
+        finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED]
+        for session_id in finished:
+            del self.sessions[session_id]
+        if finished:
+            self._notify()
+        return len(finished)
+
     def _trim(self):
         finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED]
         for sid in finished[: max(0, len(finished) - self.max_finished)]:

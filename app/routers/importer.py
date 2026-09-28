@@ -348,6 +348,44 @@ async def restart_task(
     return Response(status_code=204)  # panels update through the stream
 
 
+@router.get("/import/modal/clear", response_class=HTMLResponse)
+async def clear_finished_modal(request: Request, imports: ImportRegistry = Depends(get_imports)):
+    return templates.TemplateResponse(
+        request, "modals/import_clear_modal.html", {"count": imports.finished_count()}
+    )
+
+
+@router.get("/import/modal/abort/{session_id}/{prompt_id}", response_class=HTMLResponse)
+async def abort_modal(
+    request: Request,
+    session_id: str,
+    prompt_id: str,
+    imports: ImportRegistry = Depends(get_imports),
+):
+    located = imports.locate_prompt(session_id, prompt_id)
+    prompt = located[1] if located else None
+    abort = prompt and next((c for c in prompt.choices if c.short == ChoiceType.ABORT), None)
+    if prompt is None or prompt.answered or abort is None:
+        return HTMLResponse("")  # prompt already gone: nothing to confirm
+    return templates.TemplateResponse(
+        request,
+        "modals/import_abort_modal.html",
+        {
+            "session": imports.sessions[session_id],
+            "choose_url": f"/api/import/sessions/{session_id}/prompts/{prompt_id}/choose",
+            "value": abort.short,
+        },
+    )
+
+
+@router.delete("/api/import/sessions", response_class=HTMLResponse)
+async def dismiss_finished_sessions(imports: ImportRegistry = Depends(get_imports)):
+    imports.dismiss_finished()
+    # Empty body swapped into #modal-root removes (closes) the confirm dialog;
+    # the Finished panel updates through the stream.
+    return HTMLResponse("")
+
+
 @router.delete("/api/import/sessions/{session_id}")
 async def dismiss_session(
     session_id: str, imports: ImportRegistry = Depends(get_imports)

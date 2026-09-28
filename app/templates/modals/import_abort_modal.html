@@ -1,0 +1,33 @@
+{#- Confirm aborting an import from the candidate prompt's Abort button.
+    Context:
+      session    : SessionState being aborted
+      choose_url : the prompt's choose endpoint
+      value      : the abort choice's short letter
+
+    The form posts the abort choice and swaps the response (the next work view)
+    into #work-area. That swap doesn't touch this dialog, so it closes itself
+    once the request is done.
+-#}
+{% extends "modals/base_modal.html" %}
+
+{% block title %}Stop this import?{% endblock %}
+
+{% block content %}
+<form hx-post="{{ choose_url }}" hx-target="#work-area"
+	@htmx:finally:request="$el.closest('dialog').close()">
+	<input type="hidden" name="type" value="action">
+	<input type="hidden" name="value" value="{{ value }}">
+
+	<div class="modal-body">
+		<p class="modal-subject">
+			<strong>{{ session_name(session) }}</strong>
+			<span>Every task in this import stops. Anything already imported stays in your library.</span>
+		</p>
+	</div>
+
+	<div class="modal-actions">
+		<button type="button" class="button-secondary" @click="$el.closest('dialog').close()">Cancel</button>
+		<button type="submit" class="button-danger">Stop import</button>
+	</div>
+</form>
+{% endblock %}

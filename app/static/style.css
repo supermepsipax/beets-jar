@@ -555,6 +555,16 @@ nav {
 	margin: 0 0 12px;
 	font-size: 1.4rem;
 }
+
+/* Panel title with a control (e.g. the auto toggle) on the right */
+.panel-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.panel-head .panel-title { margin: 0; }
 .panel-empty {
 	color: var(--text-muted);
 	font-weight: bold;
