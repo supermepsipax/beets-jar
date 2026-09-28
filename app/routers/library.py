@@ -55,6 +55,14 @@ async def library_work_area(
     )
     return response
 
+@router.get("/library/modal/test", response_class=HTMLResponse)
+async def modal_test():
+    return HTMLResponse(templates.env.from_string(
+        '{% extends "modals/base_modal.html" %}'
+        "{% block title %}Hello{% endblock %}"
+        "{% block body %}<p>Esc, × and Close should all work.</p>{% endblock %}"
+        '{% block actions %}<form method="dialog"><button>Close</button></form>{% endblock %}'
+    ).render())
 
 @router.get("/api/items", response_class=HTMLResponse)
 async def get_items(

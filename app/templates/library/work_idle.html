@@ -1,20 +1,21 @@
 {% from "macros/controls.html" import toggle %}
 <div class="library-work-idle">
+	<button type="button" hx-get="/library/modal/test" hx-target="#modal-root">Modal test</button>
 	<div class="library-stats">
 		<div class="library-stat-block">
-			<label class="library-stat-number">{{ item_count }}</label>
-			<label class="library-state-text">Tracks</label>
+			<span class="library-stat-number">{{ item_count }}</span>
+			<span >Tracks</span>
 		</div>
 		<div class="library-stat-block">
-			<label class="library-stat-number">{{ album_count }}</label>
-			<label class="library-state-text">Album{% if album_count > 1%}s{% endif %}</label>
+			<span class="library-stat-number">{{ album_count }}</span>
+			<span>Album{% if album_count > 1%}s{% endif %}</span>
 		</div>
 	</div>
-	<form class="library-query-block"
+	<form class="library-query"
 		hx-get="/api/items" 
 		hx-trigger="input delay:250ms, change target:input[type='checkbox']" 
 		hx-target="#results">
-		<div class="manual-action-row">
+		<div class="library-query-row">
 			<label for="text">Query: </label>
 			<input type="text" name="query" value=""><br>
 		</div>
