@@ -1,6 +1,5 @@
 {% from "macros/controls.html" import toggle %}
 <div class="library-work-idle">
-	<button type="button" hx-get="/library/modal/test" hx-target="#modal-root">Modal test</button>
 	<div class="library-stats">
 		<div class="library-stat-block">
 			<span class="library-stat-number">{{ item_count }}</span>
@@ -12,12 +11,11 @@
 		</div>
 	</div>
 	<form class="library-query"
-		hx-get="/api/items" 
+		hx-get="/library/query_results" 
 		hx-trigger="input delay:250ms, change target:input[type='checkbox']" 
 		hx-target="#results">
 		<div class="library-query-row">
-			<label for="text">Query: </label>
-			<input type="text" name="query" value=""><br>
+			<input type="search" autocomplete="off" name="query" value=""><br>
 		</div>
 		{{ toggle("album", on="Albums", off="Items", checked=true, label="Search albums or items") }}
 	</form>

@@ -145,6 +145,76 @@ tr {
 tr:hover {
 	background: var(--surface-hover)
 }
+
+input[type="checkbox"] {
+	appearance: none;
+	display: inline-grid;
+	place-content: center;
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	margin: 0;
+	padding: 0;
+	background: var(--bg);
+	border: 3px solid var(--border);
+	border-radius: 4px;
+	box-shadow: 2px 2px 0 var(--border);
+	cursor: pointer;
+}
+input[type="checkbox"]:checked { background: var(--primary); }
+input[type="checkbox"]:checked::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	background: var(--on-primary);
+}
+input[type="checkbox"]:indeterminate::before {
+	content: "";
+	width: 10px;
+	height: 3px;
+	background: var(--text);
+}
+input[type="checkbox"]:focus {
+	transform: none;
+	border-color: var(--border);
+	box-shadow: 2px 2px 0 var(--border);
+}
+input[type="checkbox"]:focus-visible {
+	outline: 3px solid var(--primary);
+	outline-offset: 2px;
+}
+
+.check-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	font-weight: bold;
+	cursor: pointer;
+}
+
+.button-sm {
+	padding: 4px 10px;
+	font-size: 0.85rem;
+	box-shadow: 2px 2px 0 var(--border);
+}
+
+.input-sm {
+	width: 8rem;
+	padding: 4px 8px;
+	box-shadow: 2px 2px 0 var(--border);
+}
+
+/* Text-only button, e.g. "Reset to config" */
+.link-button,
+.link-button:hover {
+	padding: 0;
+	background: none;
+	color: var(--primary);
+	font-size: 0.8rem;
+	text-decoration: underline;
+	border: 0;
+	box-shadow: none;
+}
 .toggle {
 	position: relative;
 	display: inline-flex;
@@ -201,7 +271,7 @@ tr:hover {
 .toggle-sm .toggle-seg { padding: 2px 8px; font-size: 0.8rem; }
 /* }}} */
 
-/*{{{ ---------- Modal (Step 2) ---------- */
+/*{{{ ---------- Modal ---------- */
 .modal {
 	width: min(92vw, 32rem);
 	max-height: 90vh;
@@ -354,7 +424,73 @@ nav {
 	min-width: 0;
 }
 
-/* Mobile: side panels become drawers (same behaviour as the import page) */
+.results-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+.results-process { margin-left: auto; }
+.results-note {
+	font-size: 0.85rem;
+	font-weight: bold;
+	color: var(--text-muted);
+}
+.results-note:empty { display: none; }
+
+.result-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.result-row {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 10px;
+	padding: 10px 14px;
+	background: var(--bg);
+	border: 3px solid var(--border);
+	border-radius: var(--radius);
+}
+.result-row:has(input[name="ids"]:checked) { background: var(--surface); }
+.result-row.is-deleted {
+	color: var(--text-muted);
+	border-style: dashed;
+}
+
+.result-main {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+}
+.result-main strong,
+.result-main span {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.result-main span {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+.result-year {
+	flex-shrink: 0;
+	font-weight: bold;
+	color: var(--text-muted);
+}
+.result-actions {
+	display: flex;
+	flex-shrink: 0;
+	gap: 8px;
+}
+
+@media (max-width: 600px) {
+	.result-year { display: none; }
+}
+
 @media (max-width: 900px) {
 	.library-layout {
 		grid-template-columns: minmax(0, 1fr);

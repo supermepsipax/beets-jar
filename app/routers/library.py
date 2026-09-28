@@ -1,5 +1,6 @@
 import logging
-from typing import Optional
+from dataclasses import dataclass
+from typing import Literal
 
 from beets.dbcore import Results
 from beets.library import Album, Item, Library
@@ -14,6 +15,24 @@ logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
 templates = Jinja2Templates(TEMPLATES_DIR)
 
+Kind = Literal["album", "item"]
+@dataclass(frozen=True)
+class ResultRow:
+    id: int
+    title: str
+    subtitle: str
+    year: int | None
+
+def result_row(obj: Album | Item) -> ResultRow:
+    if isinstance(obj, Album):
+        return ResultRow(obj.id, obj.album or "Unknown album", obj.albumartist or "", obj.year or None)
+    subtitle = " · ".join(value for value in (obj.artist, obj.album) if value)
+    return ResultRow(obj.id, obj.title or "Unknown track", subtitle, obj.year or None)
+
+
+def get_object(lib: Library, kind: Kind, id_: int) -> Album | Item | None:
+    return lib.get_album(id_) if kind == "album" else lib.get_item(id_)
+
 
 @router.get("/", response_class=HTMLResponse)
 async def index(
@@ -27,8 +46,6 @@ async def library_page(
     request: Request,
 ):
     """Main library page."""
-
-    plugins = get_loaded_plugins()
 
     response = templates.TemplateResponse(
         request,
@@ -55,17 +72,8 @@ async def library_work_area(
     )
     return response
 
-@router.get("/library/modal/test", response_class=HTMLResponse)
-async def modal_test():
-    return HTMLResponse(templates.env.from_string(
-        '{% extends "modals/base_modal.html" %}'
-        "{% block title %}Hello{% endblock %}"
-        "{% block body %}<p>Esc, × and Close should all work.</p>{% endblock %}"
-        '{% block actions %}<form method="dialog"><button>Close</button></form>{% endblock %}'
-    ).render())
-
-@router.get("/api/items", response_class=HTMLResponse)
-async def get_items(
+@router.get("/library/query_results", response_class=HTMLResponse)
+async def get_query_results(
     request: Request,
     lib: Library = Depends(get_lib),
     query: str = "",
@@ -73,19 +81,16 @@ async def get_items(
 ):
     """Main library page."""
 
-    if album:
-        albums: Results[Album] = lib.albums(query)
-        items = None
-    else:
-        items: Results[Item] = lib.items(query)
-        albums = None
+    query = query.strip()
+    kind: Kind = "album" if album else "item"
+    context = {"kind": kind, "query": query, "rows": [], "error": None}
+    if query:
+        results = lib.albums(query) if album else lib.items(query)
+        context["rows"] = [result_row(result) for result in results]
 
     response = templates.TemplateResponse(
         request,
-        "partials/items.html",
-        {
-            "items": items,
-            "albums": albums,
-        },
+        "library/library_results.html",
+        context,
     )
     return response
