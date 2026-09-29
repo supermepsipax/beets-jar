@@ -1,3 +1,5 @@
+{# Re-rendered on every finished-panel change; refreshes the nav stats in case the library grew #}
+<div hidden hx-get="/library/stats" hx-trigger="load" hx-target="#nav-stats"></div>
 
 {% for group in groups %}
 <div class="session-group">

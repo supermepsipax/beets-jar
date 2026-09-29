@@ -21,11 +21,12 @@
 				Beets-Jar
 			</a>
 		</div>
-		<div class>
-			<a href="/library" class="nav-link">Library</a>
-			<a href="/import" class="nav-link">Import</a>
-			<a href="/configuration" class="nav-link">Configuration</a>
+		<div class="nav-links">
+			<a href="/library" class="nav-link"{% if request.url.path.startswith('/library') %} aria-current="page"{% endif %}>Library</a>
+			<a href="/import" class="nav-link"{% if request.url.path.startswith('/import') %} aria-current="page"{% endif %}>Import</a>
+			<a href="/configuration" class="nav-link"{% if request.url.path.startswith('/configuration') %} aria-current="page"{% endif %}>Configuration</a>
 		</div>
+		<div id="nav-stats" class="library-stats" hx-get="/library/stats" hx-trigger="load"></div>
 	</nav>
 	{% endblock %}
 

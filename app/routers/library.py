@@ -58,16 +58,34 @@ async def library_page(
 @router.get("/library/work", response_class=HTMLResponse)
 async def library_work_area(
     request: Request,
-    lib: Library = Depends(get_lib),
 ):
     """Main library page."""
 
     response = templates.TemplateResponse(
         request,
         "library/work_idle.html",
+        {},
+    )
+    return response
+
+@router.get("/library/stats", response_class=HTMLResponse)
+async def library_stats(
+    request: Request,
+    lib: Library = Depends(get_lib),
+):
+    """Track and album counts shown in the nav header."""
+
+    # COUNT(*) instead of len(lib.items()) so we don't load every row just to count it
+    with lib.transaction() as tx:
+        item_count = tx.query(f"SELECT COUNT(*) FROM {Item._table}")[0][0]
+        album_count = tx.query(f"SELECT COUNT(*) FROM {Album._table}")[0][0]
+
+    response = templates.TemplateResponse(
+        request,
+        "library/nav_stats.html",
         {
-            "item_count": len(lib.items()),
-            "album_count": len(lib.albums()),
+            "item_count": item_count,
+            "album_count": album_count,
         },
     )
     return response

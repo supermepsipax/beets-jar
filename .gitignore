@@ -13,3 +13,6 @@ wheels/
 dev/
 docs/
 tmp/
+
+# Impeccable (design tooling, local state)
+.impeccable/

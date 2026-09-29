@@ -1,23 +1,13 @@
 {% from "macros/controls.html" import toggle %}
 <div class="library-work-idle">
-	<div class="library-stats">
-		<div class="library-stat-block">
-			<span class="library-stat-number">{{ item_count }}</span>
-			<span >Tracks</span>
-		</div>
-		<div class="library-stat-block">
-			<span class="library-stat-number">{{ album_count }}</span>
-			<span>Album{% if album_count > 1%}s{% endif %}</span>
-		</div>
-	</div>
 	<form class="library-query"
 		hx-get="/library/query_results" 
 		hx-trigger="input delay:250ms, change target:input[type='checkbox']" 
 		hx-target="#results">
 		<div class="library-query-row">
-			<input type="search" autocomplete="off" name="query" value=""><br>
+			<input type="search" autocomplete="off" name="query" value="" aria-label="Search library">
+			{{ toggle("album", on="Albums", off="Items", checked=true, label="Search albums or items") }}
 		</div>
-		{{ toggle("album", on="Albums", off="Items", checked=true, label="Search albums or items") }}
 	</form>
 	<div id="results" class="library-results"></div>
 </div>
