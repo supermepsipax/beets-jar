@@ -39,6 +39,7 @@ class JarPlugin(BeetsPlugin):
             "host": "127.0.0.1",
             "port": 7734,
             "import_paths": {},
+            "plugins": [],
             "editor": {
                 "keymap": "default",
             },

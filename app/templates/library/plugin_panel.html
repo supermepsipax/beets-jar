@@ -1,14 +1,10 @@
-
-{%- for name, plugin in plugins %}
-<div class="plugin-panel-item">
-	<h3 class="plugin-name">{{ name }}</h3>
-	{%- for command in plugin.command_list %}
-	<span class="command-name">{{ command.command }}</span>
-		{%- for command_option in command.command_options %}
-		<span class="command-name">{{ command_option.name }}</span>
-		{%- endfor %}
-	{%- endfor %}
+{% for plugin, defaults, hash in plugins %}
+<div class="plugin-card">
+	<h3 class="plugin-name">{{ plugin.name }}</h3>
+	{% for cmd in plugin.commands %}
+	<p>{{ cmd.name }} ({{ cmd.target }}) {{ defaults[cmd.name] }}{% if cmd.fixed %} fixed={{ cmd.fixed }}{% endif %}</p>
+	{% endfor %}
 </div>
-{%- else %}
-<p class="panel-empty">No loaded plugins.</p>
-{%- endfor %}
+{% else %}
+<p class="panel-empty">No plugins available.</p>
+{% endfor %}

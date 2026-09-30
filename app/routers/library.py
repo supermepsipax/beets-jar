@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import TEMPLATES_DIR, get_lib
-from app.services import get_loaded_plugins
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])

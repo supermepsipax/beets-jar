@@ -1,0 +1,70 @@
+# Plugins that can appear in the library side panel.
+#
+# Each command needs:
+#   target:  what the command's query argument selects. Read its commands() to find out:
+#              album - it calls lib.albums(args)
+#              item  - it calls lib.items(args)
+#              flag  - it has -a/--album (dest "album") that picks; the web UI sets it
+#                      from the Albums/Items toggle
+#   options: optparse `dest` names to show in the settings box. Anything not listed
+#            keeps its default. Only store / store_true / store_false / count options.
+#   fixed:   options that are always set and never shown. Use it to answer
+#            confirmation prompts: any other prompt fails the row.
+#   config:  option -> plugin config key, for options whose default doesn't already
+#            come from the plugin's config (so the settings box mirrors config.yaml).
+#
+# QUOTE YAML 1.1 booleans used as keys: "yes", "no", "on", "off". Unquoted, `yes:`
+# becomes the boolean True rather than the string "yes".
+#
+# Adding a plugin: check its commands() in beetsplug/<name>.py for which of
+# lib.albums()/lib.items() it calls, and whether it prompts.
+# Left out on purpose:
+#   mbsync  - its query hits albums *and* singletons, so `id:N` can match both
+#   convert - prompts, and writes one playlist/output per run
+# The server caches this file: restart after editing.
+
+fetchart:
+  commands:
+    fetchart:
+      target: album
+      options: [force]
+
+lyrics:
+  commands:
+    lyrics:
+      target: item
+      options: [force, local]   # defaults already come from the lyrics config
+
+lastgenre:
+  commands:
+    lastgenre:
+      target: flag
+      options: [force, keep_existing]
+      config: {force: force, keep_existing: keep_existing}
+
+embedart:
+  commands:
+    embedart:
+      target: album             # without --file/--url it embeds each album's own art
+      fixed: {"yes": true}
+    clearart:
+      target: item
+      fixed: {"yes": true}
+
+replaygain:
+  commands:
+    replaygain:
+      target: flag
+      options: [force]
+
+ftintitle:
+  commands:
+    ftintitle:
+      target: item
+      options: [drop]
+      config: {drop: drop}
+
+scrub:
+  commands:
+    scrub:
+      target: item
