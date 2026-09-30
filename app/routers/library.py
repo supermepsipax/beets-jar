@@ -1,3 +1,4 @@
+from fastapi.concurrency import run_in_threadpool
 import logging
 from dataclasses import dataclass
 from typing import Literal
@@ -112,3 +113,50 @@ async def get_query_results(
         context,
     )
     return response
+
+def _delete_modal(request: Request, kind: Kind, obj: Album | Item, error: str | None = None):
+    return templates.TemplateResponse(
+        request,
+        "modals/library_delete_modal.html",
+        {
+            "kind": kind,
+            "row": result_row(obj),
+            "track_count": len(obj.items()) if isinstance(obj, Album) else None,
+            "error": error,
+        },
+    )
+
+
+def _deleted_row(kind: Kind, id_: int) -> HTMLResponse:
+    """Empty main content (clears #modal-root, which closes the dialog) plus an
+    out-of-band swap that turns the result row into a "Deleted" placeholder."""
+    return HTMLResponse(
+        f'<li id="row-{kind}-{id_}" class="result-row is-deleted" hx-swap-oob="true">'
+        '<span class="result-main"><strong>Deleted</strong></span></li>'
+    )
+
+
+@router.get("/library/modal/delete", response_class=HTMLResponse)
+async def delete_modal(request: Request, kind: Kind, id: int, lib: Library = Depends(get_lib)):
+    obj = get_object(lib, kind, id)
+    if obj is None:
+        return _deleted_row(kind, id)  # already gone: just update the row
+    return _delete_modal(request, kind, obj)
+
+
+@router.delete("/api/library/{kind}/{id}", response_class=HTMLResponse)
+async def delete_object(
+    request: Request,
+    kind: Kind,
+    id: int,
+    delete_files: bool = False,  # query string: htmx sends DELETE form fields in the URL
+    lib: Library = Depends(get_lib),
+):
+    obj = get_object(lib, kind, id)
+    if obj is not None:
+        try:
+            await run_in_threadpool(obj.remove, delete=delete_files)
+        except Exception as e:
+            logger.exception("Failed to delete %s %s", kind, id)
+            return _delete_modal(request, kind, obj, error=f"Couldn't delete: {e}")
+    return _deleted_row(kind, id)

@@ -17,11 +17,9 @@
 
 {% block content %}
 <form x-data="{ disk: false }"
-	hx-post="/api/library/delete"
+	hx-delete="/api/library/{{ kind }}/{{ row.id }}"
 	hx-target="#modal-root"
 	hx-swap="innerHTML">
-	<input type="hidden" name="kind" value="{{ kind }}">
-	<input type="hidden" name="id" value="{{ row.id }}">
 
 	<div class="modal-body">
 		<p class="modal-subject">
