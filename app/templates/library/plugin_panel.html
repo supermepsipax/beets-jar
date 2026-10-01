@@ -1,10 +1,61 @@
-{% for plugin, defaults, hash in plugins %}
-<div class="plugin-card">
-	<h3 class="plugin-name">{{ plugin.name }}</h3>
-	{% for cmd in plugin.commands %}
-	<p>{{ cmd.name }} ({{ cmd.target }}) {{ defaults[cmd.name] }}{% if cmd.fixed %} fixed={{ cmd.fixed }}{% endif %}</p>
+{% from "macros/controls.html" import toggle, segmented %}
+{% if plugins %}
+<form id="plugin-form" class="plugin-list" @submit.prevent>
+	{% for plugin, defaults, hash in plugins %}
+	{% set name = plugin.name %}
+	{% set names = plugin.commands | map(attribute="name") | list %}
+	{% set with_options = plugin.commands | selectattr("options") | map(attribute="name") | list %}
+	<div class="plugin-card" x-data='{
+		on: $persist(false).as("jar:{{ name }}:on"),
+		open: $persist(false).as("jar:{{ name }}:open"),
+		command: $persist({{ names[0] | tojson }}).as("jar:{{ name }}:command"),
+		opts: $persist({{ defaults | tojson }}).as("jar:{{ name }}:opts:{{ hash }}")
+	}'>
+
+		<div class="plugin-head">
+			<h3 class="plugin-name">{{ name }}</h3>
+			{{ toggle("plugins", value=name, label="Use " ~ name, attrs='x-model="on"', cls="toggle-sm") }}
+		</div>
+
+		{% if names | length > 1 %}
+		{{ segmented(name ~ ".command", names, selected=names[0], label=name ~ " command",
+			attrs='x-model="command"', cls="toggle-sm plugin-commands") }}
+		{% else %}
+		<input type="hidden" name="{{ name }}.command" value="{{ names[0] }}">
+		{% endif %}
+
+		{% if with_options %}
+		<button type="button" class="settings-bar" x-show='{{ with_options | tojson }}.includes(command)'
+			@click="open = !open" :aria-expanded="open">
+			<span>Settings</span>
+			<span x-text="open ? '↓' : '>'"></span>
+		</button>
+
+		<div class="plugin-settings" x-show='open && {{ with_options | tojson }}.includes(command)' x-cloak>
+			{% for cmd in plugin.commands if cmd.options %}
+			<div class="plugin-options" x-show="command === '{{ cmd.name }}'">
+				{% for option in cmd.options %}
+				{% set field = name ~ "." ~ cmd.name ~ "." ~ option.dest %}
+				{% set model = "opts." ~ cmd.name ~ "." ~ option.dest %}
+				<label class="plugin-option"{% if option.help %} title="{{ option.help }}"{% endif %}>
+					<span>{{ option.dest | replace("_", " ") }}</span>
+					{% if option.type == "bool" %}
+					<input type="checkbox" name="{{ field }}" value="1" x-model="{{ model }}">
+					{% else %}
+					<input type="{{ 'number' if option.type in ('int', 'float') else 'text' }}"
+						{% if option.type == "float" %}step="any"{% endif %}
+						class="input-sm" name="{{ field }}" x-model="{{ model }}">
+					{% endif %}
+				</label>
+				{% endfor %}
+			</div>
+			{% endfor %}
+			<button type="button" class="link-button" @click='opts = {{ defaults | tojson }}'>Reset to config</button>
+		</div>
+		{% endif %}
+	</div>
 	{% endfor %}
-</div>
+</form>
 {% else %}
 <p class="panel-empty">No plugins available.</p>
-{% endfor %}
+{% endif %}

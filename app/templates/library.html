@@ -18,7 +18,11 @@
 
 	<aside id="plugin-panel" class="library-panel drawer" :class="{ 'is-open': left }"
 		@click="if ($event.target.closest('.needs-you')) left = false">
-		<h2 class="panel-title">Plugins</h2>
+   		<h2 class="panel-title">
+   			Plugins
+   			<span class="help-dot" tabindex="0"
+   				title="Switch plugins on, then press Process under your search. Each plugin runs as its own job, one at a time. Settings only change that run; your config stays as it is.">?</span>
+   		</h2>
 		<div hx-get="/plugins/all" hx-trigger="load"></div>
 	</aside>
 
