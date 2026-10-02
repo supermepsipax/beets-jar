@@ -3,7 +3,7 @@ import logging
 
 log = logging.getLogger("uvicorn.error")
 
-class ImportEventBus:
+class EventBus:
 
     def __init__(self):
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -30,6 +30,7 @@ class ImportEventBus:
             try:
                 handler(event)
             except Exception:
-                log.exception("Failed to apply import event %r", event)
+                log.exception("Failed to apply event %r", event)
 
-event_bus = ImportEventBus()
+import_event_bus = EventBus()
+process_event_bus = EventBus()

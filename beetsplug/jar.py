@@ -59,21 +59,21 @@ class JarPlugin(BeetsPlugin):
         session_id = getattr(session, "session_id", None)
         if session_id is None or task is None:
             return
-        from app.imports import event_bus
+        from app.services import import_event_bus
         from app.imports.events import TaskFinished, TaskOutcome, TaskPhase, TaskSeen
         from app.imports.snapshot import summarize_task, task_key
 
         phase = TaskPhase(phase)
         task_id = task_key(task)
-        event_bus.emit(TaskSeen(session_id, task_id, phase, summarize_task(task)))
+        import_event_bus.emit(TaskSeen(session_id, task_id, phase, summarize_task(task)))
 
         if phase is TaskPhase.CHOSEN:
             if task.skip:
-                event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.SKIPPED))
+                import_event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.SKIPPED))
             elif task.choice_flag in (Action.TRACKS, Action.ALBUMS):
-                event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.SPLIT))
+                import_event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.SPLIT))
         elif phase is TaskPhase.FILES:
-            event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.IMPORTED))
+            import_event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.IMPORTED))
 
     def commands(self):
         cmd = ui.Subcommand("jar", help="start the Beets-Jar web interface")

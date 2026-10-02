@@ -1,21 +1,35 @@
-from fastapi.concurrency import run_in_threadpool
 import logging
 from dataclasses import dataclass
 from typing import Literal
 
 from beets.dbcore import Results
 from beets.library import Album, Item, Library
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.sse import EventSourceResponse
 from fastapi.templating import Jinja2Templates
+from markupsafe import escape
 
-from app import TEMPLATES_DIR, get_lib
+from app import TEMPLATES_DIR, get_lib, get_processes, get_runner
+from app.processes import (
+    ProcessRegistry,
+    ProcessRunner,
+    ProcessSpec,
+    album_flag,
+    build_queries,
+    panel_groups,
+)
+from app.services.plugins import get_panel_plugin, read_overrides
+from app.services.streaming import panel_stream
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
 templates = Jinja2Templates(TEMPLATES_DIR)
 
 Kind = Literal["album", "item"]
+
+
 @dataclass(frozen=True)
 class ResultRow:
     id: int
@@ -23,9 +37,15 @@ class ResultRow:
     subtitle: str
     year: int | None
 
+
 def result_row(obj: Album | Item) -> ResultRow:
     if isinstance(obj, Album):
-        return ResultRow(obj.id, obj.album or "Unknown album", obj.albumartist or "", obj.year or None)
+        return ResultRow(
+            obj.id,
+            obj.album or "Unknown album",
+            obj.albumartist or "",
+            obj.year or None,
+        )
     subtitle = " · ".join(value for value in (obj.artist, obj.album) if value)
     return ResultRow(obj.id, obj.title or "Unknown track", subtitle, obj.year or None)
 
@@ -68,6 +88,7 @@ async def library_work_area(
     )
     return response
 
+
 @router.get("/library/stats", response_class=HTMLResponse)
 async def library_stats(
     request: Request,
@@ -89,6 +110,7 @@ async def library_stats(
         },
     )
     return response
+
 
 @router.get("/library/query_results", response_class=HTMLResponse)
 async def get_query_results(
@@ -113,7 +135,10 @@ async def get_query_results(
     )
     return response
 
-def _delete_modal(request: Request, kind: Kind, obj: Album | Item, error: str | None = None):
+
+def _delete_modal(
+    request: Request, kind: Kind, obj: Album | Item, error: str | None = None
+):
     return templates.TemplateResponse(
         request,
         "modals/library_delete_modal.html",
@@ -136,7 +161,9 @@ def _deleted_row(kind: Kind, id_: int) -> HTMLResponse:
 
 
 @router.get("/library/modal/delete", response_class=HTMLResponse)
-async def delete_modal(request: Request, kind: Kind, id: int, lib: Library = Depends(get_lib)):
+async def delete_modal(
+    request: Request, kind: Kind, id: int, lib: Library = Depends(get_lib)
+):
     obj = get_object(lib, kind, id)
     if obj is None:
         return _deleted_row(kind, id)  # already gone: just update the row
@@ -159,3 +186,95 @@ async def delete_object(
             logger.exception("Failed to delete %s %s", kind, id)
             return _delete_modal(request, kind, obj, error=f"Couldn't delete: {e}")
     return _deleted_row(kind, id)
+
+
+def _note(text: str) -> HTMLResponse:
+    """Short message next to the Process button."""
+    return HTMLResponse(str(escape(text)))
+
+
+@router.post("/api/library/process", response_class=HTMLResponse)
+async def queue_processes(
+    request: Request,
+    lib: Library = Depends(get_lib),
+    runner: ProcessRunner = Depends(get_runner),
+):
+    """One process per switched-on plugin, in panel order.
+
+    Form: mode, query, ids[] (from #results-form) plus plugins[],
+    <plugin>.command and <plugin>.<command>.<dest> (from #plugin-form).
+    """
+    form = await request.form()
+    mode = form.get("mode")
+    ids = [int(v) for v in form.getlist("ids") if str(v).isdigit()]
+    if mode not in ("album", "item") or not ids:
+        return _note("Select something first.")
+    names = form.getlist("plugins")
+    if not names:
+        return _note("Switch a plugin on first.")
+
+    specs = []
+    for name in names:
+        plugin = get_panel_plugin(str(name))
+        if plugin is None:
+            continue
+        command = (
+            plugin.command(str(form.get(f"{name}.command", ""))) or plugin.commands[0]
+        )
+        try:
+            overrides = read_overrides(command, form, f"{name}.{command.name}")
+        except ValueError:
+            return _note(f"Check the {name} settings.")
+        queries = build_queries(lib, command.target, mode, ids)
+        if not queries:  # e.g. an album command on singletons only
+            continue
+        specs.append(
+            ProcessSpec(
+                plugin=plugin.name,
+                command=command.name,
+                queries=queries,
+                album=album_flag(command.target, mode),
+                overrides={**overrides, **command.fixed},
+                subtitle=str(form.get("query", "")),
+            )
+        )
+
+    if not specs:
+        return _note("Nothing to do for that selection.")
+    for spec in specs:
+        runner.enqueue(spec)
+    return _note("Queued: " + ", ".join(spec.name for spec in specs))
+
+
+@router.get("/library/stream/processes", response_class=EventSourceResponse)
+async def stream_processes(
+    request: Request, processes: ProcessRegistry = Depends(get_processes)
+):
+    template = templates.get_template("library/process_panel.html")
+    async for event in panel_stream(request, processes, template, panel_groups):
+        yield event
+
+
+@router.post("/api/processes/{process_id}/cancel")
+async def cancel_process(process_id: str, runner: ProcessRunner = Depends(get_runner)):
+    runner.cancel(process_id)
+    return Response(status_code=204)  # the panel updates through the stream
+
+
+@router.post("/api/processes/{process_id}/restart")
+async def restart_process(
+    process_id: str,
+    processes: ProcessRegistry = Depends(get_processes),
+    runner: ProcessRunner = Depends(get_runner),
+):
+    state = processes.processes.get(process_id)
+    if state is not None and state.finished:
+        runner.enqueue(state.spec, process_id)
+    return Response(status_code=204)
+
+
+@router.delete("/api/processes/{process_id}")
+async def dismiss_process(
+    process_id: str, processes: ProcessRegistry = Depends(get_processes)
+):
+    return Response(status_code=204 if processes.dismiss(process_id) else 409)

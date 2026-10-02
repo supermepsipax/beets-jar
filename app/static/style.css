@@ -616,6 +616,51 @@ nav .library-stat-number { font-size: 1.2rem; }
 }
 .link-button { align-self: flex-start; }
 
+.process-row {
+	margin: 0 0 10px;
+	padding: 10px 14px;
+	background: var(--bg);
+	font-weight: bold;
+	border: 3px solid var(--border);
+	border-radius: var(--radius);
+}
+.process-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+.process-query {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+.process-foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.progress {
+	flex: 1 1 auto;
+	height: 12px;
+	overflow: hidden;
+	background: var(--bg);
+	border: 3px solid var(--border);
+	border-radius: var(--radius);
+}
+.progress > span {
+	display: block;
+	height: 100%;
+	background: var(--success);
+}
+
+.tag-active { background: var(--primary); color: var(--on-primary); }
+
 @media (max-width: 600px) {
 	.result-year { display: none; }
 }

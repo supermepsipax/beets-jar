@@ -22,7 +22,6 @@ from beets.util import PromptChoice, displayable_path
 from beets.util.color import colorize
 from beets.util.units import human_bytes, human_seconds_short
 
-from app.imports import event_bus
 from app.imports.events import (
     Prompt,
     PromptClosed,
@@ -35,6 +34,7 @@ from app.imports.events import (
 )
 from app.imports.snapshot import task_key
 from app.models import ChoiceType, WebChoice
+from app.services import import_event_bus
 
 if TYPE_CHECKING:
     from beets.importer import ImportSession, ImportTask
@@ -60,7 +60,7 @@ class WebImportSession(importer.ImportSession):
         self._restart = restart
 
     def run(self):
-        event_bus.emit(
+        import_event_bus.emit(
             SessionStarted(
                 self.session_id, tuple(displayable_path(p) for p in self.paths)
             )
@@ -75,7 +75,7 @@ class WebImportSession(importer.ImportSession):
         finally:
             if self._aborted:
                 status = SessionStatus.ABORTED
-            event_bus.emit(SessionFinished(self.session_id, status, error))
+            import_event_bus.emit(SessionFinished(self.session_id, status, error))
 
     def already_imported(self, toppath, paths) -> bool:
         if self._restart:
@@ -85,11 +85,11 @@ class WebImportSession(importer.ImportSession):
     def _ask(self, kind, task=None, choices=None, **extra):
         prompt = Prompt(uuid4().hex, kind, Queue(), task, choices or [], **extra)
         task_id = task_key(task) if task is not None else None
-        event_bus.emit(PromptOpened(self.session_id, task_id, prompt))
+        import_event_bus.emit(PromptOpened(self.session_id, task_id, prompt))
         try:
             return prompt.reply.get()
         finally:
-            event_bus.emit(PromptClosed(self.session_id, prompt.prompt_id))
+            import_event_bus.emit(PromptClosed(self.session_id, prompt.prompt_id))
 
     def choose_match(self, task: ImportTask) -> AlbumMatch | importer.Action:
         """Given an initial autotagging of items, go through an interactive
@@ -276,13 +276,13 @@ class WebImportSession(importer.ImportSession):
             )
 
         if action is DuplicateAction.SKIP:
-            event_bus.emit(
+            import_event_bus.emit(
                 TaskFinished(
                     self.session_id, task_key(task), TaskOutcome.SKIPPED, "duplicate"
                 )
             )
         elif action is DuplicateAction.MERGE:
-            event_bus.emit(
+            import_event_bus.emit(
                 TaskFinished(self.session_id, task_key(task), TaskOutcome.MERGED)
             )
         return action

@@ -1,0 +1,34 @@
+{% for group in groups %}
+<div class="session-group">
+	<h3 class="session-name">{{ group.name }}</h3>
+
+	{% for row in group.rows %}
+	<div class="process-row"{% if row.error %} title="{{ row.error }}"{% endif %}>
+		<div class="process-head">
+			<span class="process-query" title="{{ row.subtitle }}">{{ row.subtitle }}</span>
+			<span class="task-row-end">
+				{% if row.can_cancel %}
+				<button type="button" class="icon-button" title="Stop"
+					hx-post="/api/processes/{{ row.process_id }}/cancel" hx-swap="none">■</button>
+				{% endif %}
+				{% if row.finished %}
+				<button type="button" class="icon-button" title="Run again"
+					hx-post="/api/processes/{{ row.process_id }}/restart" hx-swap="none">↻</button>
+				<button type="button" class="icon-button" title="Dismiss"
+					hx-delete="/api/processes/{{ row.process_id }}" hx-swap="none">×</button>
+				{% endif %}
+			</span>
+		</div>
+		<div class="process-foot">
+			<div class="progress" role="progressbar" title="{{ row.done }} of {{ row.total }}"
+				aria-valuemin="0" aria-valuemax="{{ row.total }}" aria-valuenow="{{ row.done }}">
+				<span style="width: {{ row.pct }}%"></span>
+			</div>
+			<span class="tag tag-{{ row.tone }}">{{ row.tag }}</span>
+		</div>
+	</div>
+	{% endfor %}
+</div>
+{% else %}
+<p class="panel-empty">Nothing yet.</p>
+{% endfor %}

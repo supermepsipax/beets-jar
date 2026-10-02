@@ -15,7 +15,7 @@ from app import TEMPLATES_DIR, get_imports, get_lib
 from app.imports import ImportRegistry, views
 from app.imports.registry import open_prompt, open_session_prompt
 from app.models.web_choice import ChoiceType, WebChoice
-from app.services import WebImportSession
+from app.services import WebImportSession, panel_stream
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["importer"])
@@ -46,32 +46,13 @@ async def search_page(
     return response
 
 
-async def _panel_stream(
-    request: Request, imports: ImportRegistry, template_path: str, build
-):
-    """Re-render one panel on every registry change; only send it if the HTML changed."""
-    template = templates.get_template(template_path)
-    last_version = -1
-    last_html = None
-    while not (imports.closing or await request.is_disconnected()):
-        if imports.version != last_version:
-            last_version = imports.version
-            html = template.render(groups=build(imports))
-            if html != last_html:
-                last_html = html
-                yield ServerSentEvent(raw_data=html)
-        try:
-            await asyncio.wait_for(imports.wait_for_change(last_version), timeout=30)
-        except TimeoutError:
-            yield ServerSentEvent(comment="keepalive")
-
-
 @router.get("/import/stream/in-progress", response_class=EventSourceResponse)
 async def stream_in_progress(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
-    async for event in _panel_stream(
-        request, imports, "imports/panel_in_progress.html", views.in_progress
+    template = templates.get_template("imports/panel_in_progress.html")
+    async for event in panel_stream(
+        request, imports, template, views.in_progress
     ):
         yield event
 
@@ -80,8 +61,9 @@ async def stream_in_progress(
 async def stream_finished(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
-    async for event in _panel_stream(
-        request, imports, "imports/panel_finished.html", views.finished
+    template = templates.get_template("imports/panel_finished.html")
+    async for event in panel_stream(
+        request, imports, template, views.finished
     ):
         yield event
 

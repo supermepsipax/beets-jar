@@ -1,4 +1,4 @@
-import { EditorView, basicSetup, indentWithTab, keymap, yaml } from "/static/cm.js";
+import { EditorView, basicSetup, indentWithTab, keymap, yaml, linter, lintGutter } from "/static/cm.js";
 import { configTheme } from "/static/config-theme.js";
 
 const form = document.getElementById("config-form");
@@ -12,8 +12,8 @@ const hasFinePointer = matchMedia("(any-pointer: fine)").matches;
 const keymapExtensions =
 	editorElement.dataset.keymap === "vim" && hasFinePointer ? await vimMode() : [];
 
-let saved = textarea.value;   // what's on disk
-let submitted = saved;        // what the in-flight save sent
+let saved = textarea.value;
+let submitted = saved;
 
 async function vimMode() {
 	try {
@@ -39,6 +39,8 @@ export const view = new EditorView({
 		]),
 		basicSetup,
 		yaml(),
+		linter(lintYaml, { delay: 600 }),
+		lintGutter(),
 		configTheme,
 		EditorView.updateListener.of((update) => update.docChanged && sync()),
 	],
@@ -53,6 +55,19 @@ function sync() {
 }
 
 form.addEventListener("submit", () => (submitted = textarea.value));
+
+async function lintYaml(view) {
+	const response = await fetch("/api/config/lint", {
+		method: "POST",
+		body: new URLSearchParams({ yaml_text: view.state.doc.toString() }),
+	});
+	const doc = view.state.doc;
+	return (await response.json()).map(({ line, col, message }) => {
+		const l = doc.line(Math.min(line, doc.lines));
+		const from = Math.min(l.from + col - 1, l.to);
+		return { from, to: Math.max(from + 1, l.to), severity: "error", message };
+	});
+}
 
 // htmx replaces #config-status after a save. Watching the DOM, rather than
 // htmx events, keeps this independent of htmx 4's event names.

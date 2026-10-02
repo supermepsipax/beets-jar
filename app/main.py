@@ -10,7 +10,9 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app import STATIC_DIR
-from app.imports import ImportRegistry, event_bus
+from app.imports import ImportRegistry
+from app.processes import ProcessRegistry, ProcessRunner
+from app.services import process_event_bus, import_event_bus
 from app.routers import (
     configuration_router,
     import_router,
@@ -33,11 +35,24 @@ def create_app(lib: Library | None = None) -> FastAPI:
                 directory=beets_config["directory"].as_filename(),
             )
             owns_lib = True
+        loop = asyncio.get_running_loop()
 
         imports = ImportRegistry()
-        event_bus.bind(asyncio.get_running_loop())
-        consumer = asyncio.create_task(event_bus.consume(imports.apply))
+        import_event_bus.bind(loop)
+        import_consumer = asyncio.create_task(import_event_bus.consume(imports.apply))
         app.state.imports = imports
+
+        processes = ProcessRegistry()
+        process_event_bus.bind(loop)
+        process_consumer = asyncio.create_task(process_event_bus.consume(processes.apply))
+        runner = ProcessRunner(app.state.lib)
+        runner.start()
+        app.state.processes = processes
+        app.state.runner = runner
+
+        def close_streams():
+            imports.close()
+            processes.close()
 
         # Uvicorn waits for open connections before running lifespan shutdown, so the
         # SSE stream never ends and the server hangs. Hook uvicorn's signal handlers
@@ -51,17 +66,19 @@ def create_app(lib: Library | None = None) -> FastAPI:
             previous_handlers[sig] = previous
 
             def handler(signum, frame, previous=previous):
-                loop.call_soon_threadsafe(imports.close)
+                loop.call_soon_threadsafe(close_streams)
                 previous(signum, frame)
 
             signal.signal(sig, handler)
 
         yield
 
-        event_bus.unbind()
-        consumer.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await consumer
+        runner.stop()  # a command already running finishes in its daemon thread
+        for bus, consumer in ((import_event_bus, import_consumer), (process_event_bus, process_consumer)):
+            bus.unbind()
+            consumer.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await consumer
         for sig, previous in previous_handlers.items():
             signal.signal(sig, previous)
         if owns_lib:
