@@ -10,6 +10,24 @@
    	<script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js" defer></script>
 	<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-alpha6/dist/htmx.min.js"></script>
 	<script src="//unpkg.com/alpinejs" defer></script>
+	<script>
+		// Panel streams ([data-stream]) hold a connection open. Close them when the page
+		// is left (pagehide also covers entering the bfcache) so they don't eat into the
+		// browser's 6-connections-per-host limit, and reopen them on a bfcache restore.
+		// htmx:abort is a no-op in htmx 4.0.0-alpha6 (it calls ctx.abort, but the abort
+		// function lives on ctx.request), so keep a handle on each stream's abort ourselves.
+		document.addEventListener("htmx:before:request", (e) => {
+			if (e.target.matches?.("[data-stream]")) e.target._abortStream = e.detail.ctx.request.abort;
+		});
+		window.addEventListener("pagehide", () => {
+			document.querySelectorAll("[data-stream]").forEach(el => el._abortStream?.());
+		});
+		window.addEventListener("pageshow", (e) => {
+			if (!e.persisted) return;
+			document.querySelectorAll("[data-stream]").forEach(el =>
+				htmx.ajax("GET", el.getAttribute("hx-get"), { source: el, target: el }));
+		});
+	</script>
 </head>
 
 <body>

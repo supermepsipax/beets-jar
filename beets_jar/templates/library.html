@@ -30,7 +30,7 @@
 
 	<aside id="processes" class="library-panel drawer" :class="{ 'is-open': right }">
 		<h2 class="panel-title">Processes</h2>
-   		<div hx-get="/library/stream/processes" hx-trigger="load"></div>
+   		<div data-stream hx-get="/library/stream/processes" hx-trigger="load"></div>
 	</aside>
 </div>
 {% endblock %}
