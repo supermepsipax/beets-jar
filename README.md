@@ -61,6 +61,51 @@ Run as a daemon, Linux + Mac only
 beet jar -D
 ```
 
+### Running as a systemd service (Linux)
+To have beets jar start automatically on boot, create a user service at `~/.config/systemd/user/beet-jar.service`:
+```ini
+[Unit]
+Description=Beets Jar
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/beet jar
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+Adjust `ExecStart` to wherever your `beet` executable lives (check with `which beet`). Don't pass `-D` here, systemd handles running it in the background.
+
+Enable and start the service:
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now beet-jar
+```
+
+By default user services only run while you're logged in. To start beets jar on boot without logging in, enable lingering for your user:
+```bash
+sudo loginctl enable-linger $USER
+```
+
+Check the status and logs with:
+```bash
+systemctl --user status beet-jar
+journalctl --user -u beet-jar -f
+```
+
+#### When to restart
+Beets loads its plugins once at startup, so restart the service with `systemctl --user restart beet-jar` after:
+- Installing, removing, or upgrading beets plugins (or enabling/disabling one in your config)
+- Upgrading beets or beets jar
+- Changing `host` or `port` in the `jar` config
+
+If you edit the service file itself, run `systemctl --user daemon-reload` before restarting.
+
 ## Current Features
 1. A (subjectively) beautiful front end for your beets setup (with light/dark theme)
 2. Basic library queries

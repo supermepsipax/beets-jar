@@ -110,6 +110,13 @@ class WebImportSession(importer.ImportSession):
             if self._aborted:
                 status = SessionStatus.ABORTED
             import_event_bus.emit(SessionFinished(self.session_id, status, error))
+            # `beet jar` never returns to the CLI, so plugins that defer work
+            # until `cli_exit` (subsonicupdate, mpdupdate, smartplaylist, ...)
+            # would otherwise never run after a web import.
+            try:
+                plugins.send("cli_exit", lib=self.lib)
+            except Exception:
+                log.exception(f"cli_exit listeners failed for session {self.session_id}")
 
     def already_imported(self, toppath, paths) -> bool:
         if self._restart:
@@ -568,10 +575,8 @@ def web_search(session, task, artist, name):
     track name (for singletons) for manual search.
     """
 
-    if task.is_album:
-        _, _, prop = tag_album(task.items, artist.strip(), name.strip())
-        return prop
-    return tag_item(task.item, artist.strip(), name.strip())
+    method = tag_item if isinstance(task, SingletonImportTask) else tag_album
+    return method(task.source, artist.strip(), name.strip())
 
 
 def web_id(session, task, mbid):
@@ -579,10 +584,8 @@ def web_id(session, task, mbid):
 
     Input an ID, either for an album ("release") or a track ("recording").
     """
-    if task.is_album:
-        _, _, prop = tag_album(task.items, search_ids=mbid.split())
-        return prop
-    return tag_item(task.item, search_ids=mbid.split())
+    method = tag_item if isinstance(task, SingletonImportTask) else tag_album
+    return method(task.source, search_ids=mbid.split())
 
 
 def abort_action(session: ImportSession, task: ImportTask) -> None:
