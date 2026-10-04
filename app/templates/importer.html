@@ -62,7 +62,7 @@
 		<div id="in-progress-rows" hx-get="/import/stream/in-progress" hx-trigger="load"></div>
 	</aside>
 
-	<section id="work-area" hx-get="/import/work" hx-trigger="load"></section>
+	<section id="work-area" hx-get="{{ work_url }}" hx-trigger="load"></section>
 
 	<aside id="finished" class="import-panel drawer" :class="{ 'is-open': right }">
 		<div class="panel-head">

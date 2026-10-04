@@ -31,6 +31,15 @@ def _run_detached(host, port, debug):
     uvicorn.run(app, host=host, port=port, log_level="debug" if debug else "info",
                 timeout_graceful_shutdown=5)
 
+def _generate_key():
+    """Print a new API key and the config line holding its hash. The key is not stored anywhere."""
+    from app.security import generate_api_key, hash_api_key
+
+    key = generate_api_key()
+    print("API key (shown once, give this to the external service):\n")
+    print(f"    {key}\n")
+    print("Add this to the jar: section of config.yaml, then restart the server:\n")
+    print(f"    api_key_hash: {hash_api_key(key)}")
 
 class JarPlugin(BeetsPlugin):
     def __init__(self):
@@ -40,6 +49,8 @@ class JarPlugin(BeetsPlugin):
             "port": 7734,
             "import_paths": {},
             "plugins": [],
+            "api_key_hash": "",
+            "base_url": "",
             "editor": {
                 "keymap": "default",
             },
@@ -76,7 +87,9 @@ class JarPlugin(BeetsPlugin):
             import_event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.IMPORTED))
 
     def commands(self):
-        cmd = ui.Subcommand("jar", help="start the Beets-Jar web interface")
+        cmd = ui.Subcommand("jar", help="start the Beets-Jar web interface (or: jar generate-key)")
+        cmd.parser.usage += "\n       beet jar generate-key"
+
         cmd.parser.add_option(
             "--host", default=None,
             help="server hostname (default: from config or 127.0.0.1)"
@@ -98,6 +111,11 @@ class JarPlugin(BeetsPlugin):
             help="enable hot reload on source changes"
         )
         def func(lib, opts, args):
+            if args:
+                if args == ["generate-key"]:
+                    _generate_key()
+                    return
+                raise ui.UserError(f"unknown jar command: {' '.join(args)}")
             host = opts.host or self.config["host"].as_str()
             port = opts.port or self.config["port"].get(int)
 

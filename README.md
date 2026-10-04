@@ -13,8 +13,20 @@ My secondary reasons are:
     - I like learning and love python and htmx
     - I want to contribute to beets in some form or another
 
+## What I want beets jar to be
+I want beets jar to complement the command line but not replace it. I think having a GUI makes beets much more user friendly and a GUI is much more intuitive for certain work flows. I want the setup to be painless as well, which is primarily why I made the containerization as second class citizen, 
+
+I also want to minimize the information displayed to the user. I don't like information dense or complex user interfaces so I designed beets jar to be simple and (subjectively) intuitive. 
+
 ## Similar Projects
-Of course 
+Since other people have similar projects I want to both acknowledge these applications and state where beets jar is differentiated from them.
+
+- Beets Web, the "official" web plugin for beets, I think the difference here is quite obvious, web is very basic and is more focused on library viewing/playback while jar's primary purpose is import initiation/control.
+
+- Beets Flask, a containerized Flask application that utilizes beets. While I think in general this application could have fit most of my use cases a lot of this application's opinionated aspects coupled with its primary deployment method via containerization makes this project both more complex to setup and you lose easy access to the CLI.
+
+## AI Usage
+
 
 ## Installation + Use
 First install beets jar

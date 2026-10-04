@@ -18,6 +18,7 @@ from app.routers import (
     import_router,
     library_router,
     plugins_router,
+    external_api_router,
 )
 
 
@@ -96,6 +97,7 @@ def create_app(lib: Library | None = None) -> FastAPI:
     app.include_router(import_router)
     app.include_router(configuration_router)
     app.include_router(plugins_router)
+    app.include_router(external_api_router)
     return app
 
 

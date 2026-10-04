@@ -156,9 +156,13 @@ class ImportRegistry:
                 return task_state.task_id, task_state.prompt
         return None
 
-    def next_needing_input(self) -> tuple[str, str | None] | None:
-        """Oldest open prompt: session order, then task order."""
-        for session_state in self.sessions.values():
+    def next_needing_input(self, prefer_session: str | None = None) -> tuple[str, str | None] | None:
+        """Oldest open prompt (session order, then task order), trying `prefer_session` first."""
+        sessions = list(self.sessions.values())
+        if prefer_session in self.sessions:
+            # stable sort: the preferred session moves to the front, the rest keep their order
+            sessions.sort(key=lambda s: s.session_id != prefer_session)
+        for session_state in sessions:
             if open_session_prompt(session_state):
                 return session_state.session_id, None
             for task_state in session_state.tasks.values():

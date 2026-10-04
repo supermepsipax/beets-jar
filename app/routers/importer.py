@@ -1,3 +1,4 @@
+from app.imports.events import FINISHED
 import asyncio
 import logging
 import os
@@ -15,7 +16,7 @@ from app import TEMPLATES_DIR, get_imports, get_lib
 from app.imports import ImportRegistry, views
 from app.imports.registry import open_prompt, open_session_prompt
 from app.models.web_choice import ChoiceType, WebChoice
-from app.services import WebImportSession, panel_stream
+from app.services import WebImportSession, panel_stream, start_web_import
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["importer"])
@@ -34,16 +35,16 @@ templates.env.globals.update(
 
 @router.get("/import", response_class=HTMLResponse)
 async def search_page(
-    request: Request,
+    request: Request, session: str | None = None, task: str | None = None
 ):
-    """Main importer page."""
-
-    response = templates.TemplateResponse(
-        request,
-        "importer.html",
-        {},
-    )
-    return response
+    """Main importer page. `?session=` (and optionally `&task=`) focus the work area."""
+    if session and task:
+        work_url = f"/import/work/{session}/{task}?follow=1"
+    elif session:
+        work_url = f"/import/work?session={session}"
+    else:
+        work_url = "/import/work"
+    return templates.TemplateResponse(request, "importer.html", {"work_url": work_url})
 
 
 @router.get("/import/stream/in-progress", response_class=EventSourceResponse)
@@ -51,9 +52,7 @@ async def stream_in_progress(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
     template = templates.get_template("imports/panel_in_progress.html")
-    async for event in panel_stream(
-        request, imports, template, views.in_progress
-    ):
+    async for event in panel_stream(request, imports, template, views.in_progress):
         yield event
 
 
@@ -62,9 +61,7 @@ async def stream_finished(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
     template = templates.get_template("imports/panel_finished.html")
-    async for event in panel_stream(
-        request, imports, template, views.finished
-    ):
+    async for event in panel_stream(request, imports, template, views.finished):
         yield event
 
 
@@ -73,6 +70,7 @@ async def stream_finished(
 
 def _work(request: Request, name: str, **context) -> HTMLResponse:
     return templates.TemplateResponse(request, f"imports/{name}.html", context)
+
 
 def _import_paths() -> list[tuple[str, str]]:
     """returns a list of (label, path) for the import_paths in config file"""
@@ -97,13 +95,35 @@ def render_idle(request, imports, *, note=None, error=None):
     )
 
 
-def render_next(request, imports, *, note=None):
-    """The oldest prompt waiting on the user, or the idle view."""
-    next_up = imports.next_needing_input()
+def render_next(request, imports, *, note=None, prefer_session=None):
+    next_up = imports.next_needing_input(prefer_session)
     if next_up is None:
         return render_idle(request, imports, note=note)
     session_id, task_id = next_up
     return render_task(request, imports, session_id, task_id, note=note)
+
+
+def render_session(request, imports, session_id):
+    """Review-link entry: this session's first prompt; if it has none yet but is
+    still running, wait for one; otherwise continue with the normal next prompt."""
+    session = imports.sessions.get(session_id)
+    if session is None:
+        return render_next(request, imports, note="That import is no longer here.")
+    next_up = imports.next_needing_input(prefer_session=session_id)
+    if next_up and next_up[0] == session_id:
+        return render_task(request, imports, *next_up)
+    if session.status not in FINISHED:
+        return _work(
+            request,
+            "work_waiting",
+            session=session,
+            task=None,
+            poll_url=f"/import/work?session={session_id}",
+            message="Looking up…",
+        )
+    return render_next(
+        request, imports, note=f"{views.session_name(session)} doesn't need anything."
+    )
 
 
 def render_task(
@@ -125,8 +145,15 @@ def render_task(
 
     if prompt is None:
         if follow and task is not None and task.outcome is None:
-            return _work(request, "work_waiting", session=session, task=task)
-        return render_next(request, imports, note=note)
+            return _work(
+                request,
+                "work_waiting",
+                session=session,
+                task=task,
+                poll_url=f"/import/work/{session_id}/{task_id}?follow=1",
+                message="Searching…",
+            )
+        return render_next(request, imports, note=note, prefer_session=session_id)
 
     context = {
         "session": session,
@@ -154,7 +181,11 @@ def render_task(
 
 
 @router.get("/import/work", response_class=HTMLResponse)
-async def work_next(request: Request, imports: ImportRegistry = Depends(get_imports)):
+async def work_next(
+    request: Request, session: str | None = None, imports: ImportRegistry = Depends(get_imports)
+):
+    if session:
+        return render_session(request, imports, session)
     return render_next(request, imports)
 
 
@@ -213,16 +244,6 @@ async def candidate_detail(
 # ---------------------------------------------------------------- actions
 
 
-def _start_session(
-    lib: Library, paths: list, *, restart: bool = False
-) -> WebImportSession:
-    session = WebImportSession(
-        lib=lib, paths=paths, loghandler=None, query=None, restart=restart
-    )
-    threading.Thread(target=session.run, daemon=True).start()
-    return session
-
-
 @router.post("/api/import/start", response_class=HTMLResponse)
 async def start_import(
     request: Request,
@@ -235,7 +256,7 @@ async def start_import(
         return render_idle(
             request, imports, error="That folder doesn't exist on the server."
         )
-    _start_session(lib, [path])
+    start_web_import(lib, imports, [path])
     return render_idle(request, imports, note="Import started.")
 
 
@@ -326,12 +347,14 @@ async def restart_task(
     task = imports.get_task(session_id, task_id)
     if task is not None and views.can_restart(task):
         imports.mark_restarted(session_id, task_id)
-        _start_session(lib, list(task.summary.raw_paths), restart=True)
+        start_web_import(lib, imports, list(task.summary.raw_paths), restart=True)
     return Response(status_code=204)  # panels update through the stream
 
 
 @router.get("/import/modal/clear", response_class=HTMLResponse)
-async def clear_finished_modal(request: Request, imports: ImportRegistry = Depends(get_imports)):
+async def clear_finished_modal(
+    request: Request, imports: ImportRegistry = Depends(get_imports)
+):
     return templates.TemplateResponse(
         request, "modals/import_clear_modal.html", {"count": imports.finished_count()}
     )
@@ -346,7 +369,9 @@ async def abort_modal(
 ):
     located = imports.locate_prompt(session_id, prompt_id)
     prompt = located[1] if located else None
-    abort = prompt and next((c for c in prompt.choices if c.short == ChoiceType.ABORT), None)
+    abort = prompt and next(
+        (c for c in prompt.choices if c.short == ChoiceType.ABORT), None
+    )
     if prompt is None or prompt.answered or abort is None:
         return HTMLResponse("")  # prompt already gone: nothing to confirm
     return templates.TemplateResponse(
