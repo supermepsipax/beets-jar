@@ -17,5 +17,5 @@ services:
       - ./beetsplug:/custom-plugins
       - ./dev/downloads:/import/downloads
       # FOR DEVELOPMENT ONLY
-      - ./app:/app/app
-    command: sh -c "uv sync --frozen --group dev && uvicorn app.main:app --host 0.0.0.0 --port 7734 --reload --reload-dir /app/app"
+      - ./beets_jar:/app/beets_jar
+    command: sh -c "uv sync --frozen --group dev && uvicorn beets_jar.main:app --host 0.0.0.0 --port 7734 --reload --reload-dir /app/beets_jar"

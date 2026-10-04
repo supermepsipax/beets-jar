@@ -6,7 +6,12 @@ import os
 import sys
 import uvicorn
 from beets import ui
-from beets.plugins import BeetsPlugin, EventType
+from beets.plugins import BeetsPlugin
+
+try:
+    from beets.events import EventType  # beets >= 2.14
+except ImportError:
+    from beets.plugins import EventType
 
 TASK_PHASES: dict[EventType, int] = {
     "import_task_created": 0,        # TaskPhase.QUEUED
@@ -17,7 +22,7 @@ TASK_PHASES: dict[EventType, int] = {
     "import_task_files": 5,          # TaskPhase.FILES
 }
 
-def _run_detached(host, port, debug):
+def _run_detached(host, port, debug, forwarded_allow_ips):
     """Forks server into a background process, probably only works on Linux/Mac"""
     pid = os.fork()
     if pid > 0:
@@ -26,14 +31,14 @@ def _run_detached(host, port, debug):
         return
     os.setsid()
     sys.stdin.close()
-    from app.main import create_app
+    from beets_jar.main import create_app
     app = create_app()
     uvicorn.run(app, host=host, port=port, log_level="debug" if debug else "info",
-                timeout_graceful_shutdown=5)
+                forwarded_allow_ips=forwarded_allow_ips, timeout_graceful_shutdown=5)
 
 def _generate_key():
     """Print a new API key and the config line holding its hash. The key is not stored anywhere."""
-    from app.security import generate_api_key, hash_api_key
+    from beets_jar.security import generate_api_key, hash_api_key
 
     key = generate_api_key()
     print("API key (shown once, give this to the external service):\n")
@@ -51,6 +56,8 @@ class JarPlugin(BeetsPlugin):
             "plugins": [],
             "api_key_hash": "",
             "base_url": "",
+            # Proxies trusted to set X-Forwarded-Proto/For (comma-separated IPs or CIDRs)
+            "forwarded_allow_ips": "127.0.0.1",
             "editor": {
                 "keymap": "default",
             },
@@ -70,9 +77,9 @@ class JarPlugin(BeetsPlugin):
         session_id = getattr(session, "session_id", None)
         if session_id is None or task is None:
             return
-        from app.services import import_event_bus
-        from app.imports.events import TaskFinished, TaskOutcome, TaskPhase, TaskSeen
-        from app.imports.snapshot import summarize_task, task_key
+        from beets_jar.services import import_event_bus
+        from beets_jar.imports.events import TaskFinished, TaskOutcome, TaskPhase, TaskSeen
+        from beets_jar.imports.snapshot import summarize_task, task_key
 
         phase = TaskPhase(phase)
         task_id = task_key(task)
@@ -118,28 +125,31 @@ class JarPlugin(BeetsPlugin):
                 raise ui.UserError(f"unknown jar command: {' '.join(args)}")
             host = opts.host or self.config["host"].as_str()
             port = opts.port or self.config["port"].get(int)
+            forwarded_allow_ips = self.config["forwarded_allow_ips"].as_str()
 
             if opts.detach:
-                _run_detached(host, port, opts.debug)
+                _run_detached(host, port, opts.debug, forwarded_allow_ips)
 
             elif opts.dev:
                 reload_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 uvicorn.run(
-                    "app.main:app",
+                    "beets_jar.main:app",
                     host=host,
                     port=port,
                     reload=True,
                     reload_dirs=[reload_dir],
                     log_level="debug" if opts.debug else "info",
+                    forwarded_allow_ips=forwarded_allow_ips,
                     timeout_graceful_shutdown=5,
                 )
 
             else:
-                from app.main import create_app
+                from beets_jar.main import create_app
                 app = create_app(lib=lib)
                 uvicorn.run(
                     app, host=host, port=port,
                     log_level="debug" if opts.debug else "info",
+                    forwarded_allow_ips=forwarded_allow_ips,
                     timeout_graceful_shutdown=5,
                 )
         cmd.func = func

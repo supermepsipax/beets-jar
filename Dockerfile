@@ -30,12 +30,12 @@ COPY --chown=appuser:appuser beetsplug/ ./beetsplug/
 
 # Switch to app user — everything after this is owned by appuser
 USER appuser
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --group beets
 ENV PATH="/app/.venv/bin:$PATH"
 
 # App
-COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser beets_jar/ ./beets_jar/
 RUN mkdir -p /app/data
 EXPOSE 7734
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7734"]
+CMD ["uvicorn", "beets_jar.main:app", "--host", "0.0.0.0", "--port", "7734"]
