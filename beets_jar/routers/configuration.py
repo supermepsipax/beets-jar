@@ -46,7 +46,7 @@ async def update_configuration(request: Request, yaml_text: str = Form(...)):
     if problem:
         return templates.TemplateResponse(
             request,
-            "partials/config_status.html",
+            "configuration/status.html",
             {"error": f"Line {problem['line']}: {problem['message']}"},
         )
 
@@ -54,7 +54,7 @@ async def update_configuration(request: Request, yaml_text: str = Form(...)):
 
     response = templates.TemplateResponse(
         request,
-        "partials/config_status.html",
+        "configuration/status.html",
         {"saved": True},
     )
     return response

@@ -27,14 +27,14 @@ async def search_page(
         work_url = f"/import/work?session={session}"
     else:
         work_url = "/import/work"
-    return templates.TemplateResponse(request, "importer.html", {"work_url": work_url})
+    return templates.TemplateResponse(request, "imports.html", {"work_url": work_url})
 
 
 @router.get("/import/stream/in-progress", response_class=EventSourceResponse)
 async def stream_in_progress(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
-    template = templates.get_template("imports/panel_in_progress.html")
+    template = templates.get_template("imports/in_progress_panel.html")
     async for event in panel_stream(request, imports, template, presenters.in_progress):
         yield event
 
@@ -43,7 +43,7 @@ async def stream_in_progress(
 async def stream_finished(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
-    template = templates.get_template("imports/panel_finished.html")
+    template = templates.get_template("imports/finished_panel.html")
     async for event in panel_stream(request, imports, template, presenters.finished):
         yield event
 

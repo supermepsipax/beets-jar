@@ -42,20 +42,6 @@ async def library_page(
     return response
 
 
-@router.get("/library/work", response_class=HTMLResponse)
-async def library_work_area(
-    request: Request,
-):
-    """Main library page."""
-
-    response = templates.TemplateResponse(
-        request,
-        "library/work_idle.html",
-        {},
-    )
-    return response
-
-
 @router.get("/library/stats", response_class=HTMLResponse)
 async def library_stats(
     request: Request,
@@ -97,7 +83,7 @@ async def get_query_results(
 
     response = templates.TemplateResponse(
         request,
-        "library/library_results.html",
+        "library/results.html",
         context,
     )
     return response

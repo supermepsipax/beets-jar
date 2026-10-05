@@ -25,7 +25,9 @@
 		<div hx-get="/plugins/all" hx-trigger="load"></div>
 	</aside>
 
-	<section id="work-area" hx-get="/library/work" hx-trigger="load"></section>
+	<section id="work-area">
+		{% include "library/work_idle.html" %}
+	</section>
 
 	<aside id="processes" class="library-panel drawer" :class="{ 'is-open': right }">
 		<h2 class="panel-title">Processes</h2>

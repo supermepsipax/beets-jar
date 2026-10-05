@@ -16,6 +16,12 @@
 		{% if note %}<p class="work-note">{{ note }}</p>{% endif %}
 		{% if error %}<p class="work-error">{{ error }}</p>{% endif %}
 
-		{% include "imports/prompt_" ~ prompt.kind ~ ".html" %}
+		{% if prompt.kind == "resume" %}
+		{% include "imports/prompt_resume.html" %}
+		{% elif prompt.kind == "duplicate" %}
+		{% include "imports/prompt_duplicate.html" %}
+		{% else %}
+		{% include "imports/prompt_candidate.html" %}
+		{% endif %}
 	</div>
 </article>
