@@ -9,17 +9,16 @@ from beets.library import Library
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from beets_jar import STATIC_DIR
-from beets_jar.imports import ImportRegistry
-from beets_jar.processes import ProcessRegistry, ProcessRunner
-from beets_jar.services import process_event_bus, import_event_bus
-from beets_jar.routers import (
-    configuration_router,
-    import_router,
-    library_router,
-    plugins_router,
-    external_api_router,
-)
+from beets_jar.imports.registry import ImportRegistry
+from beets_jar.processes.registry import ProcessRegistry
+from beets_jar.processes.runner import ProcessRunner
+from beets_jar.routers.configuration import router as configuration_router
+from beets_jar.routers.external_api import router as external_api_router
+from beets_jar.routers.importer import router as import_router
+from beets_jar.routers.library import router as library_router
+from beets_jar.routers.plugins import router as plugins_router
+from beets_jar.services.event_bus import import_event_bus, process_event_bus
+from beets_jar.templating import STATIC_DIR
 
 
 def create_app(lib: Library | None = None) -> FastAPI:

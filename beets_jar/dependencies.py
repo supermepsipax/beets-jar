@@ -1,8 +1,9 @@
 from beets.library import Library
 from fastapi import Request
 
-from beets_jar.imports import ImportRegistry
-from beets_jar.processes import ProcessRegistry, ProcessRunner
+from beets_jar.imports.registry import ImportRegistry
+from beets_jar.processes.registry import ProcessRegistry
+from beets_jar.processes.runner import ProcessRunner
 
 
 def get_lib(request: Request) -> Library:

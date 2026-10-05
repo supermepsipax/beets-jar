@@ -6,11 +6,11 @@ from beets.library import Library
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from beets_jar import get_imports, get_lib
-from beets_jar.imports import ImportRegistry
+from beets_jar.dependencies import get_imports, get_lib
 from beets_jar.imports.external_api import review_url, session_payload
+from beets_jar.imports.registry import ImportRegistry
 from beets_jar.security import is_valid_hash, verify_api_key
-from beets_jar.services import start_web_import
+from beets_jar.services.import_session import start_web_import
 
 log = logging.getLogger(__name__)
 

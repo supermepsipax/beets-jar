@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from beets_jar import TEMPLATES_DIR
 from beets_jar.services.plugins import defaults_hash, get_panel_plugins, ui_defaults
+from beets_jar.templating import templates
 
 router = APIRouter(tags=["plugins"])
-templates = Jinja2Templates(TEMPLATES_DIR)
 
 
 @router.get("/plugins/all", response_class=HTMLResponse)

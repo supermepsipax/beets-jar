@@ -97,7 +97,7 @@ class JarPlugin(BeetsPlugin):
             TaskSeen,
         )
         from beets_jar.imports.snapshot import summarize_task, task_key
-        from beets_jar.services import import_event_bus
+        from beets_jar.services.event_bus import import_event_bus
 
         phase = TaskPhase(phase)
         task_id = task_key(task)

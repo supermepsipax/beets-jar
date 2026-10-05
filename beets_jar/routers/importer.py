@@ -6,28 +6,18 @@ from beets.library import Library
 from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.sse import EventSourceResponse
-from fastapi.templating import Jinja2Templates
 
-from beets_jar import TEMPLATES_DIR, get_imports, get_lib
-from beets_jar.imports import ImportRegistry, views
+from beets_jar.dependencies import get_imports, get_lib
+from beets_jar.imports import views
 from beets_jar.imports.events import FINISHED
-from beets_jar.imports.registry import open_prompt, open_session_prompt
+from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
 from beets_jar.models.web_choice import ChoiceType, WebChoice
-from beets_jar.services import panel_stream, start_web_import
+from beets_jar.services.import_session import start_web_import
+from beets_jar.services.streaming import panel_stream
+from beets_jar.templating import templates
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["importer"])
-templates = Jinja2Templates(TEMPLATES_DIR)
-templates.env.filters["short_path"] = views.short_path
-templates.env.globals.update(
-    session_name=views.session_name,
-    task_name=views.task_name,
-    task_label=views.task_label,
-    outcome_tag=views.outcome_tag,
-    can_restart=views.can_restart,
-    choice_label=views.choice_label,
-    open_prompt=open_prompt,
-)
 
 
 @router.get("/import", response_class=HTMLResponse)

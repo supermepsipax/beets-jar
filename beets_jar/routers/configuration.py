@@ -6,14 +6,12 @@ from beets import config as beets_config
 from confuse import ConfigError
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from beets_jar import TEMPLATES_DIR
-from beets_jar.services import get_config_text
+from beets_jar.services.configuration import get_config_text
+from beets_jar.templating import templates
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["configuration"])
-templates = Jinja2Templates(TEMPLATES_DIR)
 
 KEYMAPS = ["default", "vim"]
 

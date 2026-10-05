@@ -34,8 +34,8 @@ from beets_jar.imports.events import (
     TaskOutcome,
 )
 from beets_jar.imports.snapshot import task_key
-from beets_jar.models import ChoiceType, WebChoice
-from beets_jar.services import import_event_bus
+from beets_jar.models.web_choice import ChoiceType, WebChoice
+from beets_jar.services.event_bus import import_event_bus
 
 if TYPE_CHECKING:
     from beets.importer import ImportTask

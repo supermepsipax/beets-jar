@@ -7,24 +7,20 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.sse import EventSourceResponse
-from fastapi.templating import Jinja2Templates
 from markupsafe import escape
 
-from beets_jar import TEMPLATES_DIR, get_lib, get_processes, get_runner
-from beets_jar.processes import (
-    ProcessRegistry,
-    ProcessRunner,
-    ProcessSpec,
-    album_flag,
-    build_queries,
-    panel_groups,
-)
+from beets_jar.dependencies import get_lib, get_processes, get_runner
+from beets_jar.processes.events import ProcessSpec
+from beets_jar.processes.registry import ProcessRegistry
+from beets_jar.processes.runner import ProcessRunner
+from beets_jar.processes.targets import album_flag, build_queries
+from beets_jar.processes.views import panel_groups
 from beets_jar.services.plugins import get_panel_plugin, read_overrides
 from beets_jar.services.streaming import panel_stream
+from beets_jar.templating import templates
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
-templates = Jinja2Templates(TEMPLATES_DIR)
 
 Kind = Literal["album", "item"]
 
