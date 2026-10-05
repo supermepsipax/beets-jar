@@ -9,9 +9,8 @@ from fastapi.sse import EventSourceResponse
 
 from beets_jar.dependencies import get_imports, get_lib
 from beets_jar.imports import views
-from beets_jar.imports.events import FINISHED
 from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
-from beets_jar.models.web_choice import ChoiceType, WebChoice
+from beets_jar.models.imports import FINISHED_SESSION_STATUSES, ChoiceType, WebChoice
 from beets_jar.services.import_session import start_web_import
 from beets_jar.services.streaming import panel_stream
 from beets_jar.templating import templates
@@ -99,7 +98,7 @@ def render_session(request, imports, session_id):
     next_up = imports.next_needing_input(prefer_session=session_id)
     if next_up and next_up[0] == session_id:
         return render_task(request, imports, *next_up)
-    if session.status not in FINISHED:
+    if session.status not in FINISHED_SESSION_STATUSES:
         return _work(
             request,
             "work_waiting",

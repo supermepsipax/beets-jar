@@ -11,14 +11,13 @@ from beets import config as beets_config
 from beets.exceptions import UserError
 from beets.library import Library
 
-from beets_jar.processes.events import (
+from beets_jar.models.process_events import (
     ProcessFinished,
     ProcessQueued,
-    ProcessSpec,
     ProcessStarted,
-    ProcessStatus,
     TargetFinished,
 )
+from beets_jar.models.processes import ProcessSpec, ProcessStatus
 from beets_jar.services.plugins import find_subcommand
 
 log = logging.getLogger("uvicorn.error")

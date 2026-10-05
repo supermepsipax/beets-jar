@@ -13,13 +13,15 @@ try:
 except ImportError:
     from beets.plugins import EventType
 
-TASK_PHASES: dict[EventType, int] = {
-    "import_task_created": 0,  # TaskPhase.QUEUED
-    "import_task_start": 1,  # TaskPhase.LOOKUP
-    "import_task_before_choice": 2,  # TaskPhase.CHOOSING
-    "import_task_choice": 3,  # TaskPhase.CHOSEN
-    "import_task_apply": 4,  # TaskPhase.APPLYING
-    "import_task_files": 5,  # TaskPhase.FILES
+# beets import event -> TaskPhase member name. Names, not the enum itself, so
+# loading this plugin doesn't import beets_jar (and FastAPI) on every beet command.
+TASK_PHASES: dict[EventType, str] = {
+    "import_task_created": "QUEUED",
+    "import_task_start": "LOOKUP",
+    "import_task_before_choice": "CHOOSING",
+    "import_task_choice": "CHOSEN",
+    "import_task_apply": "APPLYING",
+    "import_task_files": "FILES",
 }
 
 
@@ -74,35 +76,31 @@ class JarPlugin(BeetsPlugin):
                 },
             }
         )
-        for event_name, phase in TASK_PHASES.items():
-            self.register_listener(event_name, self._make_handler(phase))
+        for event_name, phase_name in TASK_PHASES.items():
+            self.register_listener(event_name, self._make_handler(phase_name))
 
-    def _make_handler(self, phase: int):
+    def _make_handler(self, phase_name: str):
         def handler(session=None, task=None, **kwargs):
             try:
-                self._on_task_event(phase, session, task)
+                self._on_task_event(phase_name, session, task)
             except Exception:
                 self._log.exception("jar: failed to report import event")
 
         return handler
 
-    def _on_task_event(self, phase, session, task):
+    def _on_task_event(self, phase_name, session, task):
         session_id = getattr(session, "session_id", None)
         if session_id is None or task is None:
             return
-        from beets_jar.imports.events import (
-            TaskFinished,
-            TaskOutcome,
-            TaskPhase,
-            TaskSeen,
-        )
-        from beets_jar.imports.snapshot import summarize_task, task_key
+        from beets_jar.models.import_events import TaskFinished, TaskSeen
+        from beets_jar.models.imports import TaskOutcome, TaskPhase, TaskSummary
         from beets_jar.services.event_bus import import_event_bus
+        from beets_jar.services.import_session import ensure_task_id
 
-        phase = TaskPhase(phase)
-        task_id = task_key(task)
+        phase = TaskPhase[phase_name]
+        task_id = ensure_task_id(task)
         import_event_bus.emit(
-            TaskSeen(session_id, task_id, phase, summarize_task(task))
+            TaskSeen(session_id, task_id, phase, TaskSummary.from_task(task))
         )
 
         if phase is TaskPhase.CHOSEN:

@@ -1,6 +1,4 @@
 import logging
-from dataclasses import dataclass
-from typing import Literal
 
 from beets.library import Album, Item, Library
 from fastapi import APIRouter, Depends, Request, Response
@@ -10,7 +8,8 @@ from fastapi.sse import EventSourceResponse
 from markupsafe import escape
 
 from beets_jar.dependencies import get_lib, get_processes, get_runner
-from beets_jar.processes.events import ProcessSpec
+from beets_jar.models.library import Kind, ResultRow
+from beets_jar.models.processes import ProcessSpec
 from beets_jar.processes.registry import ProcessRegistry
 from beets_jar.processes.runner import ProcessRunner
 from beets_jar.processes.targets import album_flag, build_queries
@@ -21,16 +20,6 @@ from beets_jar.templating import templates
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
-
-Kind = Literal["album", "item"]
-
-
-@dataclass(frozen=True)
-class ResultRow:
-    id: int
-    title: str
-    subtitle: str
-    year: int | None
 
 
 def result_row(obj: Album | Item) -> ResultRow:

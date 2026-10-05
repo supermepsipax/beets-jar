@@ -4,11 +4,11 @@ import os
 from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel
 
 from beets_jar.dependencies import get_imports, get_lib
 from beets_jar.imports.external_api import review_url, session_payload
 from beets_jar.imports.registry import ImportRegistry
+from beets_jar.models.api import StartImport
 from beets_jar.security import is_valid_hash, verify_api_key
 from beets_jar.services.import_session import start_web_import
 
@@ -36,11 +36,6 @@ router = APIRouter(prefix="/api/v1", tags=["api"], dependencies=[Depends(require
 
 def _base_url(request: Request) -> str:
     return config["jar"]["base_url"].as_str() or str(request.base_url)
-
-
-class StartImport(BaseModel):
-    path: str
-    seed_id: str | None = None
 
 
 @router.post("/imports", status_code=201)

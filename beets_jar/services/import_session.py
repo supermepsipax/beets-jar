@@ -23,18 +23,20 @@ from beets.library import Album
 from beets.util import PromptChoice, displayable_path
 from beets.util.units import human_bytes, human_seconds_short
 
-from beets_jar.imports.events import (
-    Prompt,
+from beets_jar.models.import_events import (
     PromptClosed,
     PromptOpened,
     SessionFinished,
     SessionStarted,
-    SessionStatus,
     TaskFinished,
-    TaskOutcome,
 )
-from beets_jar.imports.snapshot import task_key
-from beets_jar.models.web_choice import ChoiceType, WebChoice
+from beets_jar.models.imports import (
+    ChoiceType,
+    Prompt,
+    SessionStatus,
+    TaskOutcome,
+    WebChoice,
+)
 from beets_jar.services.event_bus import import_event_bus
 
 if TYPE_CHECKING:
@@ -43,6 +45,15 @@ if TYPE_CHECKING:
     from beets.util import PathBytes
 
 log = logging.getLogger("beets")
+
+
+def ensure_task_id(task) -> str:
+    """The registry's id for a beets ImportTask. Stored on the task itself the
+    first time it's asked for (so this mutates `task`)."""
+    task_id = getattr(task, "task_id", None)
+    if task_id is None:
+        task_id = task.task_id = uuid4().hex
+    return task_id
 
 
 class _LocalConfig:
@@ -128,7 +139,7 @@ class WebImportSession(importer.ImportSession):
 
     def _ask(self, kind, task=None, choices=None, **extra):
         prompt = Prompt(uuid4().hex, kind, Queue(), task, choices or [], **extra)
-        task_id = task_key(task) if task is not None else None
+        task_id = ensure_task_id(task) if task is not None else None
         import_event_bus.emit(PromptOpened(self.session_id, task_id, prompt))
         try:
             return prompt.reply.get()
@@ -301,12 +312,12 @@ class WebImportSession(importer.ImportSession):
         if action is DuplicateAction.SKIP:
             import_event_bus.emit(
                 TaskFinished(
-                    self.session_id, task_key(task), TaskOutcome.SKIPPED, "duplicate"
+                    self.session_id, ensure_task_id(task), TaskOutcome.SKIPPED, "duplicate"
                 )
             )
         elif action is DuplicateAction.MERGE:
             import_event_bus.emit(
-                TaskFinished(self.session_id, task_key(task), TaskOutcome.MERGED)
+                TaskFinished(self.session_id, ensure_task_id(task), TaskOutcome.MERGED)
             )
         return action
 

@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 from beets_jar.imports import views
-from beets_jar.imports.registry import (
-    SessionState,
-    TaskState,
-    open_prompt,
-    open_session_prompt,
-)
+from beets_jar.imports.registry import open_prompt, open_session_prompt
+from beets_jar.models.imports import SessionState, TaskState
 
 
 def task_payload(session: SessionState, task: TaskState) -> dict:

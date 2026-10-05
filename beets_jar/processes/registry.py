@@ -1,34 +1,12 @@
 import asyncio
-from dataclasses import dataclass
 
-from beets_jar.processes.events import (
-    FINISHED,
+from beets_jar.models.process_events import (
     ProcessFinished,
     ProcessQueued,
-    ProcessSpec,
     ProcessStarted,
-    ProcessStatus,
     TargetFinished,
 )
-
-
-@dataclass
-class ProcessState:
-    process_id: str
-    spec: ProcessSpec
-    status: ProcessStatus = ProcessStatus.QUEUED
-    done: int = 0
-    failed: int = 0
-    error: str | None = None  # why the whole process failed
-    last_error: str | None = None  # most recent single-row failure
-
-    @property
-    def total(self) -> int:
-        return len(self.spec.queries)
-
-    @property
-    def finished(self) -> bool:
-        return self.status in FINISHED
+from beets_jar.models.processes import ProcessState, ProcessStatus
 
 
 class ProcessRegistry:

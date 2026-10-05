@@ -1,8 +1,8 @@
 """Display rules for the Processes panel."""
-from dataclasses import dataclass, field
 
-from beets_jar.processes.events import ProcessStatus
-from beets_jar.processes.registry import ProcessRegistry, ProcessState
+from beets_jar.models.process_views import ProcessGroup, ProcessRow
+from beets_jar.models.processes import ProcessState, ProcessStatus
+from beets_jar.processes.registry import ProcessRegistry
 
 # (text, tone): tone maps to the .tag-<tone> CSS classes
 STATUS_TAGS = {
@@ -12,26 +12,6 @@ STATUS_TAGS = {
     ProcessStatus.FAILED: ("Failed", "danger"),
     ProcessStatus.CANCELLED: ("Stopped", "muted"),
 }
-
-
-@dataclass(frozen=True)
-class ProcessRow:
-    process_id: str
-    subtitle: str
-    done: int
-    total: int
-    pct: int
-    tag: str
-    tone: str
-    error: str | None
-    can_cancel: bool
-    finished: bool
-
-
-@dataclass
-class ProcessGroup:
-    name: str
-    rows: list[ProcessRow] = field(default_factory=list)
 
 
 def process_row(state: ProcessState) -> ProcessRow:

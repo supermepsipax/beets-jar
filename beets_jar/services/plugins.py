@@ -3,10 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, get_args
 
 import confuse
 import yaml
@@ -14,37 +13,13 @@ from beets import config, plugins
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand
 
+from beets_jar.models.plugins import PanelPlugin, PluginCommand, PluginOption, Target
+
 MANIFEST_PATH = Path(__file__).resolve().parent.parent / "plugin_manifest.yaml"
 
-Target = Literal["album", "item", "flag"]
-TARGETS = ("album", "item", "flag")
+TARGETS = get_args(Target)  # ("album", "item", "flag")
 # optparse actions whose value we know how to build from a form field
 SUPPORTED_ACTIONS = {"store", "store_true", "store_false", "count"}
-
-
-@dataclass(frozen=True)
-class PluginOption:
-    dest: str
-    type: str  # bool | int | float | string
-    default: Any  # what the command uses if the user changes nothing
-    help: str | None = None
-
-
-@dataclass(frozen=True)
-class PluginCommand:
-    name: str
-    target: Target
-    options: tuple[PluginOption, ...] = ()
-    fixed: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class PanelPlugin:
-    name: str
-    commands: tuple[PluginCommand, ...]
-
-    def command(self, name: str) -> PluginCommand | None:
-        return next((c for c in self.commands if c.name == name), None)
 
 
 # ---------- manifest ----------

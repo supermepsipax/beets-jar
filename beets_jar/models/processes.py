@@ -1,3 +1,5 @@
+"""Plugin process state: what to run, and how far it got."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,7 +15,11 @@ class ProcessStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-FINISHED = {ProcessStatus.COMPLETED, ProcessStatus.FAILED, ProcessStatus.CANCELLED}
+FINISHED_PROCESS_STATUSES = {
+    ProcessStatus.COMPLETED,
+    ProcessStatus.FAILED,
+    ProcessStatus.CANCELLED,
+}
 
 
 @dataclass(frozen=True)
@@ -32,27 +38,20 @@ class ProcessSpec:
         return self.plugin if self.command == self.plugin else f"{self.plugin} · {self.command}"
 
 
-# ---- events ----
-@dataclass(frozen=True)
-class ProcessQueued:
+@dataclass
+class ProcessState:
     process_id: str
     spec: ProcessSpec
+    status: ProcessStatus = ProcessStatus.QUEUED
+    done: int = 0
+    failed: int = 0
+    error: str | None = None  # why the whole process failed
+    last_error: str | None = None  # most recent single-row failure
 
+    @property
+    def total(self) -> int:
+        return len(self.spec.queries)
 
-@dataclass(frozen=True)
-class ProcessStarted:
-    process_id: str
-
-
-@dataclass(frozen=True)
-class TargetFinished:
-    process_id: str
-    ok: bool
-    detail: str | None = None
-
-
-@dataclass(frozen=True)
-class ProcessFinished:
-    process_id: str
-    status: ProcessStatus
-    error: str | None = None
+    @property
+    def finished(self) -> bool:
+        return self.status in FINISHED_PROCESS_STATUSES

@@ -1,21 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
 
-from beets_jar.imports.events import (
-    FINISHED,
-    Prompt,
+from beets_jar.models.import_events import (
     PromptClosed,
     PromptOpened,
     SessionFinished,
     SessionStarted,
-    SessionStatus,
     TaskFinished,
+    TaskSeen,
+)
+from beets_jar.models.imports import (
+    FINISHED_SESSION_STATUSES,
+    Prompt,
+    SessionState,
+    SessionStatus,
     TaskOutcome,
     TaskPhase,
-    TaskSeen,
-    TaskSummary,
+    TaskState,
 )
 
 
@@ -30,32 +32,8 @@ def open_session_prompt(session_state: SessionState) -> Prompt | None:
     return prompt if prompt and not prompt.answered else None
 
 
-@dataclass
-class TaskState:
-    task_id: str
-    summary: TaskSummary
-    phase: TaskPhase = TaskPhase.QUEUED
-    outcome: TaskOutcome | None = None
-    detail: str | None = None
-    prompt: Prompt | None = None
-    restarted: bool = False
-
-
-@dataclass
-class SessionState:
-    session_id: str
-    paths: list[str] = field(default_factory=list)
-    status: SessionStatus = SessionStatus.RUNNING
-    tasks: dict[str, TaskState] = field(default_factory=dict)
-    prompt: Prompt | None = None  # resume prompt
-    version: int = 0
-    error: str | None = None
-
-    def prompts(self):
-        return [p for p in (self.prompt, *(t.prompt for t in self.tasks.values())) if p]
-
-
-SWEEP = {
+# When a session ends, tasks that never got an outcome of their own get this one
+OUTCOME_FOR_UNFINISHED_TASKS = {
     SessionStatus.COMPLETED: TaskOutcome.SKIPPED,
     SessionStatus.ABORTED: TaskOutcome.ABORTED,
     SessionStatus.FAILED: TaskOutcome.FAILED,
@@ -133,7 +111,7 @@ class ImportRegistry:
                     task_state.prompt = None
                     if task_state.outcome is None:
                         task_state.outcome, task_state.phase = (
-                            SWEEP[status],
+                            OUTCOME_FOR_UNFINISHED_TASKS[status],
                             TaskPhase.DONE,
                         )
                 self._trim()
@@ -214,18 +192,18 @@ class ImportRegistry:
 
     def dismiss(self, session_id: str) -> bool:
         session_state = self.sessions.get(session_id)
-        if session_state is None or session_state.status not in FINISHED:
+        if session_state is None or session_state.status not in FINISHED_SESSION_STATUSES:
             return False
         del self.sessions[session_id]
         self._notify()
         return True
 
     def finished_count(self) -> int:
-        return sum(1 for s in self.sessions.values() if s.status in FINISHED)
+        return sum(1 for s in self.sessions.values() if s.status in FINISHED_SESSION_STATUSES)
 
     def dismiss_finished(self) -> int:
         """Dismiss every finished session; running ones stay. Returns how many went."""
-        finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED]
+        finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED_SESSION_STATUSES]
         for session_id in finished:
             del self.sessions[session_id]
         if finished:
@@ -233,7 +211,7 @@ class ImportRegistry:
         return len(finished)
 
     def _trim(self):
-        finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED]
+        finished = [sid for sid, s in self.sessions.items() if s.status in FINISHED_SESSION_STATUSES]
         for sid in finished[: max(0, len(finished) - self.max_finished)]:
             del self.sessions[sid]
 

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
 
 from beets.autotag import AlbumMatch
 
-from beets_jar.imports.events import FINISHED, SessionStatus, TaskOutcome, TaskPhase
-from beets_jar.imports.registry import (
-    ImportRegistry,
+from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
+from beets_jar.models.import_views import CandidateView, PanelGroup, Tag, TrackRow
+from beets_jar.models.imports import (
+    FINISHED_SESSION_STATUSES,
     SessionState,
+    SessionStatus,
+    TaskOutcome,
+    TaskPhase,
     TaskState,
-    open_prompt,
-    open_session_prompt,
 )
 
 RESTARTABLE = {TaskOutcome.SKIPPED, TaskOutcome.ABORTED, TaskOutcome.FAILED}
@@ -83,12 +84,6 @@ def task_label(task: TaskState) -> str:
     return "Importing"  # CHOSEN / APPLYING / FILES
 
 
-@dataclass(frozen=True)
-class Tag:
-    text: str
-    tone: str
-
-
 def outcome_tag(task: TaskState) -> Tag:
     if task.restarted:
         return Tag("Restarted", "muted")
@@ -106,22 +101,11 @@ def choice_label(choice) -> str:
 
 # ---------- panels ----------
 
-@dataclass
-class PanelGroup:
-    session: SessionState
-    name: str
-    tasks: list[TaskState] = field(default_factory=list)
-    resume: bool = False          # session-level prompt is open
-    scanning: bool = False        # running, but nothing to show yet
-    dismissable: bool = False
-    empty_note: str | None = None
-
-
 def in_progress(registry: ImportRegistry) -> list[PanelGroup]:
     """Running sessions, oldest first, with only their unfinished tasks."""
     groups = []
     for session in registry.sessions.values():
-        if session.status in FINISHED:
+        if session.status in FINISHED_SESSION_STATUSES:
             continue
         tasks = [t for t in session.tasks.values() if t.outcome is None]
         resume = open_session_prompt(session) is not None
@@ -140,7 +124,7 @@ def finished(registry: ImportRegistry) -> list[PanelGroup]:
     groups = []
     for session in reversed(list(registry.sessions.values())):
         done = [t for t in session.tasks.values() if t.outcome is not None]
-        is_finished = session.status in FINISHED
+        is_finished = session.status in FINISHED_SESSION_STATUSES
         empty_note = None
         if is_finished and not session.tasks:
             empty_note = {
@@ -159,25 +143,6 @@ def finished(registry: ImportRegistry) -> list[PanelGroup]:
 
 
 # ---------- candidates ----------
-
-@dataclass(frozen=True)
-class TrackRow:
-    number: str
-    title: str
-    old_title: str | None = None
-
-
-@dataclass(frozen=True)
-class CandidateView:
-    index: int
-    pct: int
-    title: str
-    artist: str
-    year: str
-    meta: str           # "2018 · CD · CA" / "Album · 2018"
-    tracks: list[TrackRow]
-    notes: str          # "2 tracks missing · 1 extra file"
-
 
 def _plural(n: int, word: str) -> str:
     return f"{n} {word}{'s' if n != 1 else ''}"
