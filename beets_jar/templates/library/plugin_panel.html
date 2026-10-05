@@ -1,7 +1,9 @@
 {% from "macros/controls.html" import toggle, segmented %}
 {% if plugins %}
 <form id="plugin-form" class="plugin-list" @submit.prevent>
-	{% for plugin, defaults, hash in plugins %}
+	{% for plugin in plugins %}
+	{% set defaults = plugin.ui_defaults %}
+	{% set hash = plugin.defaults_hash %}
 	{% set name = plugin.name %}
 	{% set names = plugin.commands | map(attribute="name") | list %}
 	{% set with_options = plugin.commands | selectattr("options") | map(attribute="name") | list %}

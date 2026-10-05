@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import threading
 from collections import Counter
 from itertools import chain
@@ -17,7 +18,7 @@ from beets.autotag import (
     tag_album,
     tag_item,
 )
-from beets.exceptions import UserError
+
 from beets.importer import DuplicateAction, SingletonImportTask
 from beets.library import Album
 from beets.util import PromptChoice, displayable_path
@@ -55,7 +56,6 @@ def ensure_task_id(task) -> str:
         task_id = task.task_id = uuid4().hex
     return task_id
 
-
 class _LocalConfig:
     """Per-session import config. Reads fall through to the global `config["import"]`
     except keys set on this session; writes (overrides, and beets' own implied
@@ -74,7 +74,6 @@ class _LocalConfig:
     def __setitem__(self, key, value):
         self._local[key] = value
         self._keys.add(key)
-
 
 class WebImportSession(importer.ImportSession):
     """
@@ -124,9 +123,8 @@ class WebImportSession(importer.ImportSession):
             try:
                 plugins.send("cli_exit", lib=self.lib)
             except Exception:
-                log.exception(
-                    f"cli_exit listeners failed for session {self.session_id}"
-                )
+                log.exception(f"cli_exit listeners failed for session {self.session_id}")
+
     def abort(self) -> None:
         """Stop the whole import. Called from the Abort prompt choice."""
         self._aborted = True
@@ -183,15 +181,14 @@ class WebImportSession(importer.ImportSession):
             assert isinstance(task.candidates[0], AlbumMatch)
             return task.candidates[0]
 
+        # Loop until we have a choice.
         while True:
-            # Ask for a choice from the user. The result of
-            # `choose_candidate` may be an `importer.Action`, an
-            # `AlbumMatch` object for a specific selection, or a
-            # `PromptChoice`.
+            # Ask for a choice from the user. The reply's choice may be an
+            # `importer.Action`, an `AlbumMatch` object for a specific
+            # selection, or a `PromptChoice`.
             choices = self._get_choices(task)
             web_choice: WebChoice = self._ask("candidate", task, choices)
 
-            # WAIT FOR USER RESPONSE
             # We have a specific match selection.
             # or, basic choices that require no more action here.
             if isinstance(web_choice.choice, AlbumMatch) or (
@@ -225,7 +222,6 @@ class WebImportSession(importer.ImportSession):
                 elif isinstance(post_choice, Proposal):
                     task.candidates = post_choice.candidates
                     task.rec = post_choice.recommendation
-
             # Anything else (e.g. a plugin choice without a callback): ask again
 
     def choose_item(self, task: SingletonImportTask) -> TrackMatch | importer.Action:
@@ -246,7 +242,6 @@ class WebImportSession(importer.ImportSession):
             match = task.candidates[0]
             # TODO: introduce AlbumImportTask to remove this assertion
             assert isinstance(match, TrackMatch)
-            # show_item_change(task.source, match)
             return match
         if action is not None:
             return action
@@ -328,9 +323,6 @@ class WebImportSession(importer.ImportSession):
         that's already in the library.
         """
         is_album = task.is_album
-        # log.warning("This {.source.type} is already in the library!", task)
-
-        # if config["import"]["quiet"]:
         if self.config["quiet"]:
             # In quiet mode, don't prompt -- just skip.
             log.info("Skipping.")
@@ -361,11 +353,9 @@ class WebImportSession(importer.ImportSession):
         duplicate_summary["new"] = self._report_item_summary(
             "New", task.imported_items(), is_album
         )
-
         web_choice: WebChoice = self._ask(
             "duplicate", task, choices, duplicate_summary=duplicate_summary
         )
-
         assert isinstance(web_choice.choice, PromptChoice)
         return web_choice.choice.short
 
@@ -440,21 +430,22 @@ class WebImportSession(importer.ImportSession):
         return choices + extra_choices
 
 
-def start_web_import(
-    lib, imports, paths, *, restart: bool = False, seed_id: str = ""
-) -> WebImportSession:
+def validate_import_path(raw_path: str) -> str | None:
+    """The path, stripped, if it exists on the server; None otherwise."""
+    path = raw_path.strip()
+    if not path or not os.path.exists(path):
+        return None
+    return path
+
+
+def start_web_import(lib, imports, paths, *, restart: bool = False, seed_id: str = "") -> WebImportSession:
     """Create a session, register it in the registry right away, and run it in a thread.
 
     Must be called from the event loop (i.e. from an endpoint), because it
     touches the registry directly.
     """
     session = WebImportSession(
-        lib=lib,
-        paths=paths,
-        loghandler=None,
-        query=None,
-        restart=restart,
-        seed_id=seed_id,
+        lib=lib, paths=paths, loghandler=None, query=None, restart=restart, seed_id=seed_id
     )
     imports.apply(
         SessionStarted(
@@ -520,7 +511,6 @@ def _summary_judgment(rec: Recommendation, local_config) -> importer.Action | No
     if local_config["quiet"]:
         if rec == Recommendation.strong:
             return importer.Action.APPLY
-        # action = config["import"]["quiet_fallback"].as_choice(
         action = local_config["quiet_fallback"].as_choice(
             {"skip": importer.Action.SKIP, "asis": importer.Action.ASIS}
         )
@@ -564,6 +554,6 @@ def web_id(session, task, mbid):
     return method(task.source, search_ids=mbid.split())
 
 
-def abort_action(session: ImportSession, task: ImportTask) -> None:
+def abort_action(session: WebImportSession, task: ImportTask) -> None:
     """A prompt choice callback that aborts the importer."""
     session.abort()

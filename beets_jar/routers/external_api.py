@@ -1,16 +1,16 @@
 import logging
-import os
 
 from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from beets_jar.dependencies import get_imports, get_lib
-from beets_jar.imports.external_api import review_url, session_payload
-from beets_jar.imports.registry import ImportRegistry
+from beets_jar.imports import presenters
+from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
+from beets_jar.imports.session import start_web_import, validate_import_path
 from beets_jar.models.api import StartImport
+from beets_jar.models.imports import SessionState, TaskState
 from beets_jar.security import is_valid_hash, verify_api_key
-from beets_jar.services.import_session import start_web_import
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,12 @@ router = APIRouter(prefix="/api/v1", tags=["api"], dependencies=[Depends(require
 
 
 def _base_url(request: Request) -> str:
-    return config["jar"]["base_url"].as_str() or str(request.base_url)
+    """Where clients reach this server, without a trailing slash."""
+    return (config["jar"]["base_url"].as_str() or str(request.base_url)).rstrip("/")
+
+
+def _review_url(base_url: str, session_id: str) -> str:
+    return f"{base_url}/import?session={session_id}"
 
 
 @router.post("/imports", status_code=201)
@@ -45,22 +50,22 @@ async def start(
     lib: Library = Depends(get_lib),
     imports: ImportRegistry = Depends(get_imports),
 ):
-    path = body.path.strip()
-    if not path or not os.path.exists(path):
+    path = validate_import_path(body.path)
+    if path is None:
         raise HTTPException(400, "Path does not exist on the server")
     session = start_web_import(lib, imports, [path], seed_id=(body.seed_id or ""))
-    base = _base_url(request)
+    base_url = _base_url(request)
     return {
         "session_id": session.session_id,
-        "status_url": f"{base.rstrip('/')}/api/v1/imports/{session.session_id}",
-        "review_url": review_url(session.session_id, base),
+        "status_url": f"{base_url}/api/v1/imports/{session.session_id}",
+        "review_url": _review_url(base_url, session.session_id),
     }
 
 
 @router.get("/imports")
 async def list_sessions(request: Request, imports: ImportRegistry = Depends(get_imports)):
-    base = _base_url(request)
-    return [session_payload(s, base) for s in imports.sessions.values()]
+    base_url = _base_url(request)
+    return [session_payload(s, base_url) for s in imports.sessions.values()]
 
 
 @router.get("/imports/{session_id}")
@@ -86,3 +91,33 @@ async def dismiss(session_id: str, imports: ImportRegistry = Depends(get_imports
         raise HTTPException(404)
     if not imports.dismiss(session_id):
         raise HTTPException(409, "Session is still running")
+
+
+# ---------------------------------------------------------------- JSON shapes
+# These keys are the public API: add to them, don't rename them.
+
+
+def session_payload(session: SessionState, base_url: str) -> dict:
+    tasks = [_task_payload(session, t) for t in session.tasks.values()]
+    return {
+        "session_id": session.session_id,
+        "status": session.status.value,  # running | needs_input | completed | aborted | failed
+        "needs_input": open_session_prompt(session) is not None
+        or any(t["needs_input"] for t in tasks),
+        "paths": session.paths,
+        "error": session.error,
+        "version": session.version,
+        "review_url": _review_url(base_url, session.session_id),
+        "tasks": tasks,
+    }
+
+
+def _task_payload(session: SessionState, task: TaskState) -> dict:
+    return {
+        "task_id": task.task_id,
+        "name": presenters.task_name(session, task),
+        "items": task.summary.item_count,
+        "phase": task.phase.name.lower(),  # queued | lookup | choosing | chosen | applying | files | done
+        "outcome": task.outcome.value if task.outcome else None,
+        "needs_input": open_prompt(task) is not None,
+    }

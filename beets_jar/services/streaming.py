@@ -3,8 +3,11 @@ import asyncio
 from fastapi import Request
 from fastapi.sse import ServerSentEvent
 
+# How often an idle stream checks whether its browser tab went away. Without
+# this, a closed tab's stream lingers until the next change or keepalive.
 DISCONNECT_CHECK_SECONDS = 1
 KEEPALIVE_SECONDS = 30
+
 
 async def panel_stream(request: Request, registry, template, build):
     """Re-render one side panel on every registry change; only send it if the HTML changed.

@@ -1,4 +1,4 @@
-"""What the Processes panel renders (built in processes/views.py)."""
+"""What the Processes panel renders (built in processes/presenters.py)."""
 
 from dataclasses import dataclass, field
 

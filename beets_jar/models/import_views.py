@@ -1,4 +1,4 @@
-"""What the import page's templates render (built in imports/views.py)."""
+"""What the import page's templates render (built in imports/presenters.py)."""
 
 from __future__ import annotations
 

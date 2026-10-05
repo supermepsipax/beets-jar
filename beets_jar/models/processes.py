@@ -28,7 +28,7 @@ class ProcessSpec:
 
     plugin: str
     command: str
-    queries: tuple[str, ...]  # one beets query per progress step (see targets.py)
+    queries: tuple[str, ...]  # one beets query per progress step (see processes/specs.py)
     album: bool | None = None  # opts.album, for target=flag commands
     overrides: dict[str, Any] = field(default_factory=dict)  # dest -> value, incl. manifest `fixed`
     subtitle: str = ""  # the library query the rows came from, for the panel

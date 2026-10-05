@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
-from beets_jar.imports import views
+from beets_jar.imports import presenters
 from beets_jar.imports.registry import open_prompt
 
 APP_DIR = Path(__file__).resolve().parent
@@ -12,13 +12,13 @@ TEMPLATES_DIR = APP_DIR / "templates"
 STATIC_DIR = APP_DIR / "static"
 
 templates = Jinja2Templates(TEMPLATES_DIR)
-templates.env.filters["short_path"] = views.short_path
+templates.env.filters["short_path"] = presenters.short_path
 templates.env.globals.update(
-    session_name=views.session_name,
-    task_name=views.task_name,
-    task_label=views.task_label,
-    outcome_tag=views.outcome_tag,
-    can_restart=views.can_restart,
-    choice_label=views.choice_label,
+    session_name=presenters.session_name,
+    task_name=presenters.task_name,
+    task_label=presenters.task_label,
+    outcome_tag=presenters.outcome_tag,
+    can_restart=presenters.can_restart,
+    choice_label=presenters.choice_label,
     open_prompt=open_prompt,
 )

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
@@ -53,31 +51,6 @@ def get_panel_plugins() -> list[PanelPlugin]:
             if panel_plugin.commands:
                 panel.append(panel_plugin)
     return panel
-
-
-def get_panel_plugin(name: str) -> PanelPlugin | None:
-    return next((p for p in get_panel_plugins() if p.name == name), None)
-
-
-def ui_defaults(plugin: PanelPlugin) -> dict[str, dict[str, Any]]:
-    """{command: {dest: value}} for the settings box. Bools stay bools; the rest
-    become strings so they compare cleanly with <input> values in the browser."""
-    return {
-        command.name: {option.dest: _ui_value(option) for option in command.options}
-        for command in plugin.commands
-    }
-
-
-def _ui_value(option: PluginOption) -> Any:
-    if option.type == "bool":
-        return bool(option.default)
-    return "" if option.default is None else str(option.default)
-
-
-def defaults_hash(defaults: dict) -> str:
-    """Short fingerprint of ui_defaults(). It goes into the browser's storage key
-    for a plugin's settings, so changing that plugin's config starts them fresh."""
-    return hashlib.sha1(json.dumps(defaults, sort_keys=True).encode()).hexdigest()[:8]
 
 
 def _panel_plugin(name: str, plugin: BeetsPlugin, spec: dict) -> PanelPlugin:

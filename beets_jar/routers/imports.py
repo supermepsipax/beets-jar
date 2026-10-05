@@ -1,6 +1,3 @@
-import logging
-import os
-
 from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, Form, Request, Response
@@ -8,15 +5,15 @@ from fastapi.responses import HTMLResponse
 from fastapi.sse import EventSourceResponse
 
 from beets_jar.dependencies import get_imports, get_lib
-from beets_jar.imports import views
+from beets_jar.imports import presenters
 from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
-from beets_jar.models.imports import FINISHED_SESSION_STATUSES, ChoiceType, WebChoice
-from beets_jar.services.import_session import start_web_import
+from beets_jar.imports.replies import build_reply
+from beets_jar.imports.session import start_web_import, validate_import_path
+from beets_jar.models.imports import FINISHED_SESSION_STATUSES, ChoiceType
 from beets_jar.services.streaming import panel_stream
 from beets_jar.templating import templates
 
-logger = logging.getLogger("uvicorn.error")
-router = APIRouter(tags=["importer"])
+router = APIRouter(tags=["imports"])
 
 
 @router.get("/import", response_class=HTMLResponse)
@@ -38,7 +35,7 @@ async def stream_in_progress(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
     template = templates.get_template("imports/panel_in_progress.html")
-    async for event in panel_stream(request, imports, template, views.in_progress):
+    async for event in panel_stream(request, imports, template, presenters.in_progress):
         yield event
 
 
@@ -47,7 +44,7 @@ async def stream_finished(
     request: Request, imports: ImportRegistry = Depends(get_imports)
 ):
     template = templates.get_template("imports/panel_finished.html")
-    async for event in panel_stream(request, imports, template, views.finished):
+    async for event in panel_stream(request, imports, template, presenters.finished):
         yield event
 
 
@@ -58,24 +55,16 @@ def _work(request: Request, name: str, **context) -> HTMLResponse:
     return templates.TemplateResponse(request, f"imports/{name}.html", context)
 
 
-def _import_paths() -> list[tuple[str, str]]:
-    """returns a list of (label, path) for the import_paths in config file"""
-
-    import_paths = config["jar"]["import_paths"]
-    if not import_paths:
-        return []
-    folders = []
-    for path_label, path in import_paths.items():
-        folders.append((path_label, path.as_filename()))
-    return folders
-
-
 def render_idle(request, imports, *, note=None, error=None):
+    # (label, folder) buttons from the jar.import_paths config
+    quick_imports = [
+        (label, path.as_filename()) for label, path in config["jar"]["import_paths"].items()
+    ]
     return _work(
         request,
         "work_idle",
         pending=imports.pending_count(),
-        download_paths=_import_paths(),
+        quick_imports=quick_imports,
         note=note,
         error=error,
     )
@@ -108,7 +97,7 @@ def render_session(request, imports, session_id):
             message="Looking up…",
         )
     return render_next(
-        request, imports, note=f"{views.session_name(session)} doesn't need anything."
+        request, imports, note=f"{presenters.session_name(session)} doesn't need anything."
     )
 
 
@@ -152,7 +141,7 @@ def render_task(
     if prompt.kind == "candidate":
         # Reading prompt.task is safe: its pipeline thread is blocked on reply.get()
         candidates = [
-            views.candidate_view(match, index)
+            presenters.candidate_view(match, index)
             for index, match in enumerate(prompt.task.candidates or [], start=1)
         ]
         context.update(
@@ -168,9 +157,7 @@ def render_task(
 
 @router.get("/import/work", response_class=HTMLResponse)
 async def work_next(
-    request: Request,
-    session: str | None = None,
-    imports: ImportRegistry = Depends(get_imports),
+    request: Request, session: str | None = None, imports: ImportRegistry = Depends(get_imports)
 ):
     if session:
         return render_session(request, imports, session)
@@ -224,7 +211,7 @@ async def candidate_detail(
     return _work(
         request,
         "candidate_detail",
-        candidate=views.candidate_view(candidates[index - 1], index),
+        candidate=presenters.candidate_view(candidates[index - 1], index),
         choose_url=f"/api/import/sessions/{session_id}/prompts/{prompt_id}/choose",
     )
 
@@ -239,8 +226,8 @@ async def start_import(
     lib: Library = Depends(get_lib),
     imports: ImportRegistry = Depends(get_imports),
 ):
-    path = path.strip()
-    if not path or not os.path.exists(path):
+    path = validate_import_path(path)
+    if path is None:
         return render_idle(
             request, imports, error="That folder doesn't exist on the server."
         )
@@ -273,7 +260,7 @@ async def choose(
     task_id, prompt = located
 
     try:
-        reply = _build_reply(
+        reply = build_reply(
             prompt, type, value, artist.strip(), query.strip(), mbid.strip()
         )
     except ValueError as e:
@@ -293,38 +280,6 @@ async def choose(
     return render_task(request, imports, session_id, task_id)
 
 
-def _build_reply(prompt, type: str, value: str, artist: str, query: str, mbid: str):
-    """Turn form fields into what the blocked pipeline thread expects. Raises ValueError."""
-    if prompt.kind == "resume":
-        return value == "yes"
-
-    if prompt.kind == "candidate" and type == "candidate":
-        candidates = prompt.task.candidates or []
-        try:
-            index = int(value) - 1
-        except ValueError:
-            raise ValueError("Unknown candidate.") from None
-        if not 0 <= index < len(candidates):
-            raise ValueError("Unknown candidate.")
-        return WebChoice(candidates[index], {})
-
-    choice = next((c for c in prompt.choices if c.short == value), None)
-    if choice is None:
-        raise ValueError("Unknown action.")
-
-    if prompt.kind == "candidate":
-        if choice.short == ChoiceType.SEARCH:
-            if not query:
-                raise ValueError("Enter something to search for.")
-            return WebChoice(choice, {"artist": artist, "query": query})
-        if choice.short == ChoiceType.ID:
-            if not mbid:
-                raise ValueError("Enter a MusicBrainz ID.")
-            return WebChoice(choice, {"mbid": mbid})
-
-    return WebChoice(choice, {})
-
-
 @router.post("/api/import/sessions/{session_id}/tasks/{task_id}/restart")
 async def restart_task(
     session_id: str,
@@ -333,7 +288,7 @@ async def restart_task(
     imports: ImportRegistry = Depends(get_imports),
 ):
     task = imports.get_task(session_id, task_id)
-    if task is not None and views.can_restart(task):
+    if task is not None and presenters.can_restart(task):
         imports.mark_restarted(session_id, task_id)
         start_web_import(lib, imports, list(task.summary.raw_paths), restart=True)
     return Response(status_code=204)  # panels update through the stream

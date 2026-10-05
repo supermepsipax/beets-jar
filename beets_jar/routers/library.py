@@ -8,34 +8,17 @@ from fastapi.sse import EventSourceResponse
 from markupsafe import escape
 
 from beets_jar.dependencies import get_lib, get_processes, get_runner
-from beets_jar.models.library import Kind, ResultRow
-from beets_jar.models.processes import ProcessSpec
+from beets_jar.models.library import Kind
+from beets_jar.processes.presenters import panel_groups
 from beets_jar.processes.registry import ProcessRegistry
 from beets_jar.processes.runner import ProcessRunner
-from beets_jar.processes.targets import album_flag, build_queries
-from beets_jar.processes.views import panel_groups
-from beets_jar.services.plugins import get_panel_plugin, read_overrides
+from beets_jar.processes.specs import build_specs
+from beets_jar.services.library import get_album_or_item, result_row
 from beets_jar.services.streaming import panel_stream
 from beets_jar.templating import templates
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["library"])
-
-
-def result_row(obj: Album | Item) -> ResultRow:
-    if isinstance(obj, Album):
-        return ResultRow(
-            obj.id,
-            obj.album or "Unknown album",
-            obj.albumartist or "",
-            obj.year or None,
-        )
-    subtitle = " · ".join(value for value in (obj.artist, obj.album) if value)
-    return ResultRow(obj.id, obj.title or "Unknown track", subtitle, obj.year or None)
-
-
-def get_object(lib: Library, kind: Kind, id_: int) -> Album | Item | None:
-    return lib.get_album(id_) if kind == "album" else lib.get_item(id_)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -148,7 +131,7 @@ def _deleted_row(kind: Kind, id_: int) -> HTMLResponse:
 async def delete_modal(
     request: Request, kind: Kind, id: int, lib: Library = Depends(get_lib)
 ):
-    obj = get_object(lib, kind, id)
+    obj = get_album_or_item(lib, kind, id)
     if obj is None:
         return _deleted_row(kind, id)  # already gone: just update the row
     return _delete_modal(request, kind, obj)
@@ -162,7 +145,7 @@ async def delete_object(
     delete_files: bool = False,  # query string: htmx sends DELETE form fields in the URL
     lib: Library = Depends(get_lib),
 ):
-    obj = get_object(lib, kind, id)
+    obj = get_album_or_item(lib, kind, id)
     if obj is not None:
         try:
             await run_in_threadpool(obj.remove, delete=delete_files)
@@ -183,48 +166,12 @@ async def queue_processes(
     lib: Library = Depends(get_lib),
     runner: ProcessRunner = Depends(get_runner),
 ):
-    """One process per switched-on plugin, in panel order.
-
-    Form: mode, query, ids[] (from #results-form) plus plugins[],
-    <plugin>.command and <plugin>.<command>.<dest> (from #plugin-form).
-    """
+    """One process per switched-on plugin, in panel order (see build_specs)."""
     form = await request.form()
-    mode = form.get("mode")
-    ids = [int(v) for v in form.getlist("ids") if str(v).isdigit()]
-    if mode not in ("album", "item") or not ids:
-        return _note("Select something first.")
-    names = form.getlist("plugins")
-    if not names:
-        return _note("Switch a plugin on first.")
-
-    specs = []
-    for name in names:
-        plugin = get_panel_plugin(str(name))
-        if plugin is None:
-            continue
-        command = (
-            plugin.command(str(form.get(f"{name}.command", ""))) or plugin.commands[0]
-        )
-        try:
-            overrides = read_overrides(command, form, f"{name}.{command.name}")
-        except ValueError:
-            return _note(f"Check the {name} settings.")
-        queries = build_queries(lib, command.target, mode, ids)
-        if not queries:  # e.g. an album command on singletons only
-            continue
-        specs.append(
-            ProcessSpec(
-                plugin=plugin.name,
-                command=command.name,
-                queries=queries,
-                album=album_flag(command.target, mode),
-                overrides={**overrides, **command.fixed},
-                subtitle=str(form.get("query", "")),
-            )
-        )
-
-    if not specs:
-        return _note("Nothing to do for that selection.")
+    try:
+        specs = build_specs(lib, form)
+    except ValueError as error:
+        return _note(str(error))
     for spec in specs:
         runner.enqueue(spec)
     return _note("Queued: " + ", ".join(spec.name for spec in specs))
