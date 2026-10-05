@@ -16,8 +16,7 @@
 	</div>
 	<div class="drawer-backdrop" x-show="left || right" x-cloak @click="left = false; right = false"></div>
 
-	<aside id="plugin-panel" class="library-panel drawer" :class="{ 'is-open': left }"
-		@click="if ($event.target.closest('.needs-you')) left = false">
+	<aside id="plugin-panel" class="library-panel drawer" :class="{ 'is-open': left }">
    		<h2 class="panel-title">
    			Plugins
    			<span class="help-dot" tabindex="0"

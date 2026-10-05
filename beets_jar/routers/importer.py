@@ -1,22 +1,19 @@
-from beets_jar.imports.events import FINISHED
-import asyncio
 import logging
 import os
-import threading
-from pathlib import Path
 
 from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse
-from fastapi.sse import EventSourceResponse, ServerSentEvent
+from fastapi.sse import EventSourceResponse
 from fastapi.templating import Jinja2Templates
 
 from beets_jar import TEMPLATES_DIR, get_imports, get_lib
 from beets_jar.imports import ImportRegistry, views
+from beets_jar.imports.events import FINISHED
 from beets_jar.imports.registry import open_prompt, open_session_prompt
 from beets_jar.models.web_choice import ChoiceType, WebChoice
-from beets_jar.services import WebImportSession, panel_stream, start_web_import
+from beets_jar.services import panel_stream, start_web_import
 
 logger = logging.getLogger("uvicorn.error")
 router = APIRouter(tags=["importer"])
@@ -182,7 +179,9 @@ def render_task(
 
 @router.get("/import/work", response_class=HTMLResponse)
 async def work_next(
-    request: Request, session: str | None = None, imports: ImportRegistry = Depends(get_imports)
+    request: Request,
+    session: str | None = None,
+    imports: ImportRegistry = Depends(get_imports),
 ):
     if session:
         return render_session(request, imports, session)

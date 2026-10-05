@@ -58,7 +58,6 @@ def create_app(lib: Library | None = None) -> FastAPI:
         # Uvicorn waits for open connections before running lifespan shutdown, so the
         # SSE stream never ends and the server hangs. Hook uvicorn's signal handlers
         # (installed before startup) so streams are closed as soon as shutdown begins.
-        loop = asyncio.get_running_loop()
         previous_handlers = {}
         for sig in (signal.SIGINT, signal.SIGTERM):
             previous = signal.getsignal(sig)
@@ -102,7 +101,3 @@ def create_app(lib: Library | None = None) -> FastAPI:
 
 
 app = create_app()
-
-# @app.get("/api/health")
-# def health():
-#     return {"status": "ok"}

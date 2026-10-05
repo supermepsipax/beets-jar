@@ -6,7 +6,7 @@
 - [x] Auto prompt toggle so prompts are pushed to the work area
 - [x] Configurable "favorite" paths for quick import
 - [ ] Import via file upload in browser
-- [ ] Import with seeded context (mbid, album/artist title)
+- [x] Import with seeded context (mbid, album/artist title)
 - [ ] Upgrade import for desired bitrate/format
 **Configuration**
 - [x] More advanced code editor 
@@ -18,7 +18,7 @@
 - [ ] Communicate potential choices between user and beet jar
 **Library**
 - [x] Basic library query returns list matching query (for album and items)
-- [ ] Delete library items
+- [x] Delete library items
 - [ ] Edit library items
 **Plugins**
 - [x] Auto-populate installed plugins and their commands (if any)
@@ -27,5 +27,5 @@
 - [ ] Beets db is in DELETE mode and maybe should switch to WAL mode
 - [ ] Many plugins expect access to stdout for relaying info
 **Bugs**
-- [ ] Chromium browsers (Helium) keep import page SSE streams open after navigating away (bfcache?), 3 visits = 6 connections = navigation hangs
+- [x] Chromium browsers (Helium) keep import page SSE streams open after navigating away (bfcache?), 3 visits = 6 connections = navigation hangs NOTE: This was actually an htmx issue not properly closing out sse streams!
 

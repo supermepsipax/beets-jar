@@ -4,11 +4,11 @@ import threading
 from collections import Counter
 from itertools import chain
 from queue import Queue
-from typing import TYPE_CHECKING, Iterator, Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 import confuse
-from beets import config, importer, logging, plugins
+from beets import importer, logging, plugins
 from beets.autotag import (
     AlbumMatch,
     Proposal,
@@ -21,7 +21,6 @@ from beets.exceptions import UserError
 from beets.importer import DuplicateAction, SingletonImportTask
 from beets.library import Album
 from beets.util import PromptChoice, displayable_path
-from beets.util.color import colorize
 from beets.util.units import human_bytes, human_seconds_short
 
 from beets_jar.imports.events import (
@@ -45,6 +44,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("beets")
 
+
 class _LocalConfig:
     """Per-session import config. Reads fall through to the global `config["import"]`
     except keys set on this session; writes (overrides, and beets' own implied
@@ -64,6 +64,7 @@ class _LocalConfig:
         self._local[key] = value
         self._keys.add(key)
 
+
 class WebImportSession(importer.ImportSession):
     """
     An import session that can be triggered and ran with another asynchronous process.
@@ -79,7 +80,6 @@ class WebImportSession(importer.ImportSession):
         self.seed_id = seed_id.strip()
         self._aborted = False
         self._restart = restart
-        
 
     def _config_overrides(self) -> dict:
         """Import config this session changes. Add future per-import options here."""
@@ -116,7 +116,9 @@ class WebImportSession(importer.ImportSession):
             try:
                 plugins.send("cli_exit", lib=self.lib)
             except Exception:
-                log.exception(f"cli_exit listeners failed for session {self.session_id}")
+                log.exception(
+                    f"cli_exit listeners failed for session {self.session_id}"
+                )
 
     def already_imported(self, toppath, paths) -> bool:
         if self._restart:
@@ -165,16 +167,9 @@ class WebImportSession(importer.ImportSession):
             return match
         if action is not None:
             return action
-        # if task.rec == Recommendation.strong and not config["import"]["timid"]:
         if task.rec == Recommendation.strong and not self.config["timid"]:
             assert isinstance(task.candidates[0], AlbumMatch)
             return task.candidates[0]
-
-        # Loop until we have a choice.
-
-        # queue_item = QueueStorageItem(task, queue_type=QueueStorageType.CANDIDATE)
-        # queue_id = self.queues.store(queue_item)
-        # self._queue_ids.append(queue_id)
 
         while True:
             # Ask for a choice from the user. The result of
@@ -182,12 +177,9 @@ class WebImportSession(importer.ImportSession):
             # `AlbumMatch` object for a specific selection, or a
             # `PromptChoice`.
             choices = self._get_choices(task)
-            # self.queues.update(queue_id, task, choices)
             web_choice: WebChoice = self._ask("candidate", task, choices)
 
             # WAIT FOR USER RESPONSE
-            # web_choice: WebChoice = queue_item.queue.get()
-
             # We have a specific match selection.
             # or, basic choices that require no more action here.
             if isinstance(web_choice.choice, AlbumMatch) or (
@@ -195,7 +187,6 @@ class WebImportSession(importer.ImportSession):
                 and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
-                # self.queues.delete(queue_id)
                 return web_choice.choice
 
             # Plugin-provided choices. We invoke the associated callback
@@ -218,7 +209,6 @@ class WebImportSession(importer.ImportSession):
                 else:
                     post_choice = web_choice.choice.callback(self, task)
                 if isinstance(post_choice, importer.Action):
-                    # self.queues.delete(queue_id)
                     return post_choice
                 elif isinstance(post_choice, Proposal):
                     task.candidates = post_choice.candidates
@@ -228,7 +218,6 @@ class WebImportSession(importer.ImportSession):
                 # We have a candidate! Finish tagging. Here, choice is an
                 # AlbumMatch object.
                 assert isinstance(web_choice.choice, AlbumMatch)
-                # self.queues.delete(queue_id)
                 return web_choice.choice
 
     def choose_item(self, task: SingletonImportTask) -> TrackMatch | importer.Action:
@@ -253,7 +242,6 @@ class WebImportSession(importer.ImportSession):
             return match
         if action is not None:
             return action
-        # if task.rec == Recommendation.strong and not config["import"]["timid"]:
         if task.rec == Recommendation.strong and not self.config["timid"]:
             assert isinstance(task.candidates[0], TrackMatch)
             return task.candidates[0]
@@ -261,15 +249,7 @@ class WebImportSession(importer.ImportSession):
         while True:
             # Ask for a choice.
             choices = self._get_choices(task)
-            # self.queues.update(queue_id, task, choices)
             web_choice: WebChoice = self._ask("candidate", task, choices)
-            # choice = choose_candidate(
-            #     # TODO: introduce AlbumImportTask to remove this ignore
-            #     task.candidates,  # type: ignore[arg-type]
-            #     task.rec,
-            #     task.source,
-            #     choices=choices,
-            # )
 
             # We have a specific match selection.
             # or, basic web_choice.choices that require no more action here.
@@ -278,7 +258,6 @@ class WebImportSession(importer.ImportSession):
                 and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
             ):
                 # Pass selection to main control flow.
-                # self.queues.delete(queue_id)
                 return web_choice.choice
 
             # Plugin-provided web_choice.choices. We invoke the associated callback
@@ -374,30 +353,15 @@ class WebImportSession(importer.ImportSession):
         duplicate_summary["new"] = self._report_item_summary(
             "New", task.imported_items(), is_album
         )
-        # queue_item = QueueStorageItem(
-        #     task, choices, QueueStorageType.DUPLICATE, duplicate_summary
-        # )
-        # queue_id = self.queues.store(queue_item)
-        # self._queue_ids.append(queue_id)
 
         web_choice: WebChoice = self._ask(
             "duplicate", task, choices, duplicate_summary=duplicate_summary
         )
 
         assert isinstance(web_choice.choice, PromptChoice)
-
-        # self.queues.delete(queue_id)
         return web_choice.choice.short
-        # return input_options(DuplicateAction.strict_options())
 
     def should_resume(self, path: PathBytes) -> bool:
-        # queue_item = QueueStorageItem(
-        #     queue_type=QueueStorageType.RESUME, path=displayable_path(path)
-        # )
-        # queue_id = self.queues.store(queue_item)
-        # self._queue_ids.append(queue_id)
-        # choice = queue_item.queue.get()
-        # self.queues.delete(queue_id)
         return self._ask("resume", path=displayable_path(path))
 
     def _get_choices(self, task: ImportTask) -> list[PromptChoice]:
@@ -468,14 +432,21 @@ class WebImportSession(importer.ImportSession):
         return choices + extra_choices
 
 
-def start_web_import(lib, imports, paths, *, restart: bool = False, seed_id: str = "") -> WebImportSession:
+def start_web_import(
+    lib, imports, paths, *, restart: bool = False, seed_id: str = ""
+) -> WebImportSession:
     """Create a session, register it in the registry right away, and run it in a thread.
 
     Must be called from the event loop (i.e. from an endpoint), because it
     touches the registry directly.
     """
     session = WebImportSession(
-        lib=lib, paths=paths, loghandler=None, query=None, restart=restart, seed_id=seed_id
+        lib=lib,
+        paths=paths,
+        loghandler=None,
+        query=None,
+        restart=restart,
+        seed_id=seed_id,
     )
     imports.apply(
         SessionStarted(
@@ -538,7 +509,6 @@ def _summary_judgment(rec: Recommendation, local_config) -> importer.Action | No
     """
 
     action: importer.Action | None
-    # if config["import"]["quiet"]:
     if local_config["quiet"]:
         if rec == Recommendation.strong:
             return importer.Action.APPLY
@@ -546,11 +516,9 @@ def _summary_judgment(rec: Recommendation, local_config) -> importer.Action | No
         action = local_config["quiet_fallback"].as_choice(
             {"skip": importer.Action.SKIP, "asis": importer.Action.ASIS}
         )
-    # elif config["import"]["timid"]:
     elif local_config["timid"]:
         return None
     elif rec == Recommendation.none:
-        # action = config["import"]["none_rec_action"].as_choice(
         action = local_config["none_rec_action"].as_choice(
             {
                 "skip": importer.Action.SKIP,
@@ -592,23 +560,3 @@ def abort_action(session: ImportSession, task: ImportTask) -> None:
     """A prompt choice callback that aborts the importer."""
     session._aborted = True
     raise importer.ImportAbortError()
-
-
-def input_(prompt=None):
-    """Like `input`, but decodes the result to a Unicode string.
-    Raises a UserError if stdin is not available. The prompt is sent to
-    stdout rather than stderr. A printed between the prompt and the
-    input cursor.
-    """
-    # raw_input incorrectly sends prompts to stderr, not stdout, so we
-    # use print_() explicitly to display prompts.
-    # https://bugs.python.org/issue1927
-    if prompt:
-        print(prompt, end=" ")
-
-    try:
-        resp = input()
-    except EOFError:
-        raise UserError("stdin stream ended while input required")
-
-    return resp

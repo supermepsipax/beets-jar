@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Literal
 
-from beets.dbcore import Results
 from beets.library import Album, Item, Library
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool

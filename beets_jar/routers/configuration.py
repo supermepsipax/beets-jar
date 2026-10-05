@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 from beets import config as beets_config
 from confuse import ConfigError
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 

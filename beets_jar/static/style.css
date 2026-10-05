@@ -1,9 +1,6 @@
 /*{{{ ---------- Theme ---------- */
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
 :root {
-	/* --bg: #f3df91; */
-	/* --surface: #fffaf0; */
-	/* --surface-hover: #f4ead2; */
 	--bg: #fffaf0;
 	--surface: #f3df91;
 	--surface-hover: #f3df80;
@@ -34,13 +31,6 @@
 
         --border: #080708;
 
-        /* --primary: #748ffc; */
-        /* --primary-hover: #91a7ff; */
-
-		/* NOTE: Maybe too pink */
-		/* --primary: #d06a8c; */
-		/* --primary-hover: #df88a4; */
-
 		--primary: #c65a7e;
 		--primary-hover: #d97999;
         --on-primary: #111111;
@@ -57,7 +47,6 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    /* font-family: system-ui, sans-serif; */
 	font-family: 'Space Mono', monospace;
 }
 
@@ -132,18 +121,6 @@ button:disabled {
 	border: 3px solid var(--text-muted);
 	box-shadow: none;
 	cursor: not-allowed;
-}
-
-table {
-	border: 0;
-	border-radius: var(--radius);
-}
-tr {
-	border: 0;
-	border-radius: var(--radius);
-}
-tr:hover {
-	background: var(--surface-hover)
 }
 
 input[type="checkbox"] {

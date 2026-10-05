@@ -11,13 +11,6 @@ class ChoiceType(str, enum.Enum):
     ID = "i"
     ABORT = "b"
 
-class DuplicateChoiceType(str, enum.Enum):
-    
-    SKIP = "s"
-    MERGE = "m"
-    REMOVE = "r"
-    KEEP = "k"
-
 class WebChoice:
     def __init__(self, choice: AlbumMatch | TrackMatch | PromptChoice, follow_up_info: dict[str, str]):
         self.choice = choice
