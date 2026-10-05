@@ -38,7 +38,7 @@ from beets_jar.models import ChoiceType, WebChoice
 from beets_jar.services import import_event_bus
 
 if TYPE_CHECKING:
-    from beets.importer import ImportSession, ImportTask
+    from beets.importer import ImportTask
     from beets.library import AlbumOrItem, Item
     from beets.util import PathBytes
 
@@ -94,11 +94,8 @@ class WebImportSession(importer.ImportSession):
         super().set_config(_LocalConfig(config, self._config_overrides()))
 
     def run(self):
-        import_event_bus.emit(
-            SessionStarted(
-                self.session_id, tuple(displayable_path(p) for p in self.paths)
-            )
-        )
+        # No SessionStarted here: start_web_import applies it to the registry
+        # before this thread starts, so the session shows up immediately.
         status, error = SessionStatus.COMPLETED, None
         try:
             super().run()
@@ -119,6 +116,10 @@ class WebImportSession(importer.ImportSession):
                 log.exception(
                     f"cli_exit listeners failed for session {self.session_id}"
                 )
+    def abort(self) -> None:
+        """Stop the whole import. Called from the Abort prompt choice."""
+        self._aborted = True
+        raise importer.ImportAbortError()
 
     def already_imported(self, toppath, paths) -> bool:
         if self._restart:
@@ -214,11 +215,7 @@ class WebImportSession(importer.ImportSession):
                     task.candidates = post_choice.candidates
                     task.rec = post_choice.recommendation
 
-            else:
-                # We have a candidate! Finish tagging. Here, choice is an
-                # AlbumMatch object.
-                assert isinstance(web_choice.choice, AlbumMatch)
-                return web_choice.choice
+            # Anything else (e.g. a plugin choice without a callback): ask again
 
     def choose_item(self, task: SingletonImportTask) -> TrackMatch | importer.Action:
         """Ask the user for a choice about tagging a single item. Returns
@@ -558,5 +555,4 @@ def web_id(session, task, mbid):
 
 def abort_action(session: ImportSession, task: ImportTask) -> None:
     """A prompt choice callback that aborts the importer."""
-    session._aborted = True
-    raise importer.ImportAbortError()
+    session.abort()

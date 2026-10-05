@@ -57,12 +57,20 @@ function sync() {
 form.addEventListener("submit", () => (submitted = textarea.value));
 
 async function lintYaml(view) {
-	const response = await fetch("/api/config/lint", {
-		method: "POST",
-		body: new URLSearchParams({ yaml_text: view.state.doc.toString() }),
-	});
+	let problems;
+	try {
+		const response = await fetch("/api/config/lint", {
+			method: "POST",
+			body: new URLSearchParams({ yaml_text: view.state.doc.toString() }),
+		});
+		if (!response.ok) return [];
+		problems = await response.json();
+	} catch (error) {
+		console.warn("YAML lint request failed.", error);
+		return [];
+	}
 	const doc = view.state.doc;
-	return (await response.json()).map(({ line, col, message }) => {
+	return problems.map(({ line, col, message }) => {
 		const l = doc.line(Math.min(line, doc.lines));
 		const from = Math.min(l.from + col - 1, l.to);
 		return { from, to: Math.max(from + 1, l.to), severity: "error", message };
