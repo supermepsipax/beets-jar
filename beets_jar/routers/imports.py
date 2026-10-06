@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.sse import EventSourceResponse
 
-from beets_jar.dependencies import get_imports, get_lib
+from beets_jar.dependencies import get_import_registry, get_lib
 from beets_jar.imports import presenters
 from beets_jar.imports.registry import ImportRegistry
 from beets_jar.imports.replies import build_reply
@@ -29,19 +29,19 @@ async def import_page(
 
 @router.get("/import/stream/in-progress", response_class=EventSourceResponse)
 async def stream_in_progress(
-    request: Request, imports: ImportRegistry = Depends(get_imports)
+    request: Request, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
     template = templates.get_template("imports/in_progress_panel.html")
-    async for event in panel_stream(request, imports, template, presenters.in_progress):
+    async for event in panel_stream(request, import_registry, template, presenters.in_progress):
         yield event
 
 
 @router.get("/import/stream/finished", response_class=EventSourceResponse)
 async def stream_finished(
-    request: Request, imports: ImportRegistry = Depends(get_imports)
+    request: Request, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
     template = templates.get_template("imports/finished_panel.html")
-    async for event in panel_stream(request, imports, template, presenters.finished):
+    async for event in panel_stream(request, import_registry, template, presenters.finished):
         yield event
 
 
@@ -67,7 +67,7 @@ def _work(request: Request, name: str, **context) -> HTMLResponse:
     return templates.TemplateResponse(request, f"imports/{name}.html", context)
 
 
-def render_idle(request, imports, *, note=None, error=None):
+def render_idle(request, import_registry, *, note=None, error=None):
     # (label, folder) buttons from the jar.import_paths config
     quick_imports = [
         (label, path.as_filename()) for label, path in config["jar"]["import_paths"].items()
@@ -75,46 +75,46 @@ def render_idle(request, imports, *, note=None, error=None):
     return _work(
         request,
         "work_idle",
-        pending=imports.pending_count(),
+        pending=import_registry.pending_count(),
         quick_imports=quick_imports,
         note=note,
         error=error,
     )
 
 
-def render_next(request, imports, *, note=None, prefer_session=None):
-    next_up = imports.next_needing_input(prefer_session)
+def render_next(request, import_registry, *, note=None, prefer_session=None):
+    next_up = import_registry.next_needing_input(prefer_session)
     if next_up is None:
-        return render_idle(request, imports, note=note)
+        return render_idle(request, import_registry, note=note)
     session_id, task_id = next_up
-    return render_task(request, imports, session_id, task_id, note=note)
+    return render_task(request, import_registry, session_id, task_id, note=note)
 
 
-def render_session(request, imports, session_id):
+def render_session(request, import_registry, session_id):
     """Review-link entry: this session's first prompt; if it has none yet but is
     still running, wait for one; otherwise continue with the normal next prompt."""
-    session = imports.sessions.get(session_id)
+    session = import_registry.sessions.get(session_id)
     if session is None:
-        return render_next(request, imports, note="That import is no longer here.")
-    next_up = imports.next_needing_input(prefer_session=session_id)
+        return render_next(request, import_registry, note="That import is no longer here.")
+    next_up = import_registry.next_needing_input(prefer_session=session_id)
     if next_up and next_up[0] == session_id:
-        return render_task(request, imports, *next_up)
+        return render_task(request, import_registry, *next_up)
     if session.status not in FINISHED_SESSION_STATUSES:
         return _render_waiting(request, session, None, _work_url(session_id), "Looking up…")
     return render_next(
-        request, imports, note=f"{presenters.session_name(session)} doesn't need anything."
+        request, import_registry, note=f"{presenters.session_name(session)} doesn't need anything."
     )
 
 
 def render_task(
-    request, imports, session_id, task_id=None, *, follow=False, note=None, error=None
+    request, import_registry, session_id, task_id=None, *, follow=False, note=None, error=None
 ):
     """The prompt for one task (or the session's resume prompt when task_id is None).
 
     With nothing to ask: show "Searching…" if we're following a search, otherwise
     fall through to the next task that needs the user.
     """
-    session = imports.sessions.get(session_id)
+    session = import_registry.sessions.get(session_id)
     task = None
     prompt = None
     if session is not None and task_id is None:
@@ -127,7 +127,7 @@ def render_task(
         if follow and task is not None and task.outcome is None:
             poll_url = _work_url(session_id, task_id, follow=True)
             return _render_waiting(request, session, task, poll_url, "Searching…")
-        return render_next(request, imports, note=note, prefer_session=session_id)
+        return render_next(request, import_registry, note=note, prefer_session=session_id)
 
     context = {
         "session": session,
@@ -168,24 +168,23 @@ def _render_waiting(request, session, task, poll_url: str, message: str):
 
 @router.get("/import/work", response_class=HTMLResponse)
 async def work_next(
-    request: Request, session: str | None = None, imports: ImportRegistry = Depends(get_imports)
+    request: Request, session: str | None = None, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
     if session:
-        return render_session(request, imports, session)
-    return render_next(request, imports)
+        return render_session(request, import_registry, session)
+    return render_next(request, import_registry)
 
 
 @router.get("/import/work/idle", response_class=HTMLResponse)
-async def work_idle(request: Request, imports: ImportRegistry = Depends(get_imports)):
-
-    return render_idle(request, imports)
+async def work_idle(request: Request, import_registry: ImportRegistry = Depends(get_import_registry)):
+    return render_idle(request, import_registry)
 
 
 @router.get("/import/work/{session_id}", response_class=HTMLResponse)
 async def work_session(
-    request: Request, session_id: str, imports: ImportRegistry = Depends(get_imports)
+    request: Request, session_id: str, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
-    return render_task(request, imports, session_id)
+    return render_task(request, import_registry, session_id)
 
 
 @router.get("/import/work/{session_id}/{task_id}", response_class=HTMLResponse)
@@ -194,9 +193,9 @@ async def work_task(
     session_id: str,
     task_id: str,
     follow: bool = False,
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
-    return render_task(request, imports, session_id, task_id, follow=follow)
+    return render_task(request, import_registry, session_id, task_id, follow=follow)
 
 
 @router.get(
@@ -208,9 +207,9 @@ async def candidate_detail(
     session_id: str,
     prompt_id: str,
     index: int,
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
-    found = imports.find_open_prompt(session_id, prompt_id)
+    found = import_registry.find_open_prompt(session_id, prompt_id)
     candidates = []
     if found is not None:
         _, prompt = found
@@ -236,15 +235,15 @@ async def start_import(
     request: Request,
     path: str = Form(""),
     lib: Library = Depends(get_lib),
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
     path = validate_import_path(path)
     if path is None:
         return render_idle(
-            request, imports, error="That folder doesn't exist on the server."
+            request, import_registry, error="That folder doesn't exist on the server."
         )
-    start_web_import(lib, imports, [path])
-    return render_idle(request, imports, note="Import started.")
+    start_web_import(lib, import_registry, [path])
+    return render_idle(request, import_registry, note="Import started.")
 
 
 @router.post(
@@ -255,28 +254,28 @@ async def answer_prompt(
     request: Request,
     session_id: str,
     prompt_id: str,
-    type: str = Form(...),
+    choice_type: str = Form(...),
     value: str = Form(...),
     artist: str = Form(""),
     query: str = Form(""),
     mbid: str = Form(""),
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
     """Answer a prompt, then return whatever the work area should show next.
 
     Always 200 with HTML, so htmx never has to deal with error statuses.
     """
-    found = imports.find_open_prompt(session_id, prompt_id)
+    found = import_registry.find_open_prompt(session_id, prompt_id)
     if found is None:
-        return render_next(request, imports, note="That choice was already made.")
+        return render_next(request, import_registry, note="That choice was already made.")
     task_id, prompt = found
 
     try:
         reply = build_reply(
-            prompt, type, value, artist.strip(), query.strip(), mbid.strip()
+            prompt, choice_type, value, artist.strip(), query.strip(), mbid.strip()
         )
-    except ValueError as e:
-        return render_task(request, imports, session_id, task_id, error=str(e))
+    except ValueError as error:
+        return render_task(request, import_registry, session_id, task_id, error=str(error))
 
     prompt.answered = True  # before put(): a double click can't send two replies
     prompt.reply.put(reply)
@@ -284,14 +283,14 @@ async def answer_prompt(
     # A search or ID lookup: show "Searching…" until its candidates arrive
     starts_search = (
         prompt.kind == "candidate"
-        and type == "action"
+        and choice_type == "action"
         and value in (ChoiceType.SEARCH, ChoiceType.ID)
     )
     if starts_search:
-        return render_task(request, imports, session_id, task_id, follow=True)
+        return render_task(request, import_registry, session_id, task_id, follow=True)
     if task_id is not None:
-        await imports.wait_for_followup(session_id, task_id, prompt_id)
-    return render_task(request, imports, session_id, task_id)
+        await import_registry.wait_for_followup(session_id, task_id, prompt_id)
+    return render_task(request, import_registry, session_id, task_id)
 
 
 @router.post("/import/sessions/{session_id}/tasks/{task_id}/restart")
@@ -299,21 +298,21 @@ async def restart_task(
     session_id: str,
     task_id: str,
     lib: Library = Depends(get_lib),
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
-    task = imports.get_task(session_id, task_id)
+    task = import_registry.get_task(session_id, task_id)
     if task is not None and presenters.can_restart(task):
-        imports.mark_restarted(session_id, task_id)
-        start_web_import(lib, imports, list(task.summary.raw_paths), restart=True)
+        import_registry.mark_restarted(session_id, task_id)
+        start_web_import(lib, import_registry, list(task.summary.raw_paths), restart=True)
     return Response(status_code=204)  # panels update through the stream
 
 
 @router.get("/import/modal/clear", response_class=HTMLResponse)
 async def clear_finished_modal(
-    request: Request, imports: ImportRegistry = Depends(get_imports)
+    request: Request, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
     return templates.TemplateResponse(
-        request, "modals/import_clear_modal.html", {"count": imports.finished_count()}
+        request, "modals/import_clear_modal.html", {"count": import_registry.finished_count()}
     )
 
 
@@ -322,29 +321,31 @@ async def abort_modal(
     request: Request,
     session_id: str,
     prompt_id: str,
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
-    found = imports.find_open_prompt(session_id, prompt_id)
+    found = import_registry.find_open_prompt(session_id, prompt_id)
     if found is None:
         return HTMLResponse("")  # prompt already gone: nothing to confirm
     _, prompt = found
-    abort = next((c for c in prompt.choices if c.short == ChoiceType.ABORT), None)
-    if abort is None:
+    abort_choice = next(
+        (choice for choice in prompt.choices if choice.short == ChoiceType.ABORT), None
+    )
+    if abort_choice is None:
         return HTMLResponse("")
     return templates.TemplateResponse(
         request,
         "modals/import_abort_modal.html",
         {
-            "session": imports.sessions[session_id],
+            "session": import_registry.sessions[session_id],
             "choose_url": _choose_url(session_id, prompt_id),
-            "value": abort.short,
+            "value": abort_choice.short,
         },
     )
 
 
 @router.delete("/import/sessions", response_class=HTMLResponse)
-async def dismiss_finished_sessions(imports: ImportRegistry = Depends(get_imports)):
-    imports.dismiss_finished()
+async def dismiss_finished_sessions(import_registry: ImportRegistry = Depends(get_import_registry)):
+    import_registry.dismiss_finished()
     # Empty body swapped into #modal-root removes (closes) the confirm dialog;
     # the Finished panel updates through the stream.
     return HTMLResponse("")
@@ -352,8 +353,8 @@ async def dismiss_finished_sessions(imports: ImportRegistry = Depends(get_import
 
 @router.delete("/import/sessions/{session_id}")
 async def dismiss_session(
-    session_id: str, imports: ImportRegistry = Depends(get_imports)
+    session_id: str, import_registry: ImportRegistry = Depends(get_import_registry)
 ):
-    if not imports.dismiss(session_id):
+    if not import_registry.dismiss(session_id):
         return Response(status_code=409)
     return Response(status_code=204)

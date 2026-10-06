@@ -37,6 +37,6 @@ def panel_groups(registry: ProcessRegistry) -> list[ProcessGroup]:
     """Processes grouped under their plugin (or "plugin · command"), in first-seen order."""
     groups: dict[str, ProcessGroup] = {}
     for state in registry.processes.values():
-        name = state.spec.name
+        name = state.spec.display_name
         groups.setdefault(name, ProcessGroup(name)).rows.append(process_row(state))
     return list(groups.values())

@@ -1,7 +1,7 @@
 <div class="work-actions">
 	{% for choice in prompt.choices if choice.short not in ["e", "i", "b"] %}
 	<form hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="type" value="action">
+		<input type="hidden" name="choice_type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
 		<button type="submit" class="button-secondary">{{ choice_label(choice) }}</button>
 	</form>
@@ -45,7 +45,7 @@
 <div class="manual-actions">
 	{% for choice in prompt.choices if choice.short == "e" %}
 	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="type" value="action">
+		<input type="hidden" name="choice_type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
 		<label>Search</label>
 		<div class="manual-action-row">
@@ -58,7 +58,7 @@
 
 	{% for choice in prompt.choices if choice.short == "i" %}
 	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="type" value="action">
+		<input type="hidden" name="choice_type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
 		<label>MusicBrainz ID</label>
 		<div class="manual-action-row">

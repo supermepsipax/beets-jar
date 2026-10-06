@@ -26,8 +26,8 @@ SUPPORTED_ACTIONS = {"store", "store_true", "store_false", "count"}
 @cache
 def load_manifest() -> dict[str, dict]:
     """Parsed plugin_manifest.yaml, cached for the life of the server."""
-    with MANIFEST_PATH.open() as f:
-        return yaml.safe_load(f) or {}
+    with MANIFEST_PATH.open() as manifest_file:
+        return yaml.safe_load(manifest_file) or {}
 
 
 def _wanted_names() -> list[str]:
@@ -153,12 +153,13 @@ def read_overrides(command: PluginCommand, form: Mapping, prefix: str) -> dict[s
     for option in command.options:
         raw = form.get(f"{prefix}.{option.dest}")
         if option.type == "bool":
-            value = raw is not None and coerce(option, str(raw))
-        elif raw is None or not str(raw).strip():
-            continue
+            value = raw is not None and coerce(option, str(raw))  # unticked sends nothing
+            default = bool(option.default)
         else:
+            if raw is None or not str(raw).strip():
+                continue
             value = coerce(option, str(raw))
-        default = bool(option.default) if option.type == "bool" else option.default
+            default = option.default
         if value != default:
             overrides[option.dest] = value
     return overrides

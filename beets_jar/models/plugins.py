@@ -40,7 +40,7 @@ class PanelPlugin:
     commands: tuple[PluginCommand, ...]
 
     def command(self, name: str) -> PluginCommand | None:
-        return next((c for c in self.commands if c.name == name), None)
+        return next((command for command in self.commands if command.name == name), None)
 
     @property
     def ui_defaults(self) -> dict[str, dict[str, Any]]:

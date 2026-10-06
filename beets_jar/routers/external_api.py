@@ -4,7 +4,7 @@ from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
-from beets_jar.dependencies import get_imports, get_lib
+from beets_jar.dependencies import get_import_registry, get_lib
 from beets_jar.imports import presenters
 from beets_jar.imports.registry import ImportRegistry
 from beets_jar.imports.session import start_web_import, validate_import_path
@@ -56,12 +56,12 @@ async def start_import_session(
     body: StartImport,
     request: Request,
     lib: Library = Depends(get_lib),
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
     path = validate_import_path(body.path)
     if path is None:
         raise HTTPException(400, "Path does not exist on the server")
-    session = start_web_import(lib, imports, [path], seed_id=(body.seed_id or ""))
+    session = start_web_import(lib, import_registry, [path], seed_id=(body.seed_id or ""))
     base_url = _base_url(request)
     return {
         "session_id": session.session_id,
@@ -71,9 +71,9 @@ async def start_import_session(
 
 
 @router.get("/imports")
-async def list_sessions(request: Request, imports: ImportRegistry = Depends(get_imports)):
+async def list_sessions(request: Request, import_registry: ImportRegistry = Depends(get_import_registry)):
     base_url = _base_url(request)
-    return [session_payload(s, base_url) for s in imports.sessions.values()]
+    return [session_payload(session, base_url) for session in import_registry.sessions.values()]
 
 
 @router.get("/imports/{session_id}")
@@ -81,9 +81,9 @@ async def get_session(
     session_id: str,
     request: Request,
     response: Response,
-    imports: ImportRegistry = Depends(get_imports),
+    import_registry: ImportRegistry = Depends(get_import_registry),
 ):
-    session = imports.sessions.get(session_id)
+    session = import_registry.sessions.get(session_id)
     if session is None:
         raise HTTPException(404, "Unknown or dismissed session")
     etag = f'"{session.version}"'
@@ -94,10 +94,10 @@ async def get_session(
 
 
 @router.delete("/imports/{session_id}", status_code=204)
-async def dismiss_import_session(session_id: str, imports: ImportRegistry = Depends(get_imports)):
-    if session_id not in imports.sessions:
+async def dismiss_import_session(session_id: str, import_registry: ImportRegistry = Depends(get_import_registry)):
+    if session_id not in import_registry.sessions:
         raise HTTPException(404)
-    if not imports.dismiss(session_id):
+    if not import_registry.dismiss(session_id):
         raise HTTPException(409, "Session is still running")
 
 
@@ -106,12 +106,12 @@ async def dismiss_import_session(session_id: str, imports: ImportRegistry = Depe
 
 
 def session_payload(session: SessionState, base_url: str) -> dict:
-    tasks = [_task_payload(session, t) for t in session.tasks.values()]
+    tasks = [_task_payload(session, task) for task in session.tasks.values()]
+    needs_input = session.open_prompt is not None or any(task["needs_input"] for task in tasks)
     return {
         "session_id": session.session_id,
         "status": session.status.value,  # running | needs_input | completed | aborted | failed
-        "needs_input": session.open_prompt is not None
-        or any(t["needs_input"] for t in tasks),
+        "needs_input": needs_input,
         "paths": session.paths,
         "error": session.error,
         "version": session.version,

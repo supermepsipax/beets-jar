@@ -34,8 +34,11 @@ class ProcessSpec:
     subtitle: str = ""  # the library query the rows came from, for the panel
 
     @property
-    def name(self) -> str:
-        return self.plugin if self.command == self.plugin else f"{self.plugin} · {self.command}"
+    def display_name(self) -> str:
+        """"lyrics", or "embedart · clearart" when the command isn't named after its plugin."""
+        if self.command == self.plugin:
+            return self.plugin
+        return f"{self.plugin} · {self.command}"
 
 
 @dataclass

@@ -89,8 +89,8 @@ class Prompt:
     reply: Queue = field(default_factory=Queue)
     task: Any = None  # live ImportTask; safe to read while the prompt is open
     choices: list = field(default_factory=list)
-    duplicate_summary: dict | None = None
-    path: str | None = None
+    duplicate_summary: dict | None = None  # duplicate prompts only
+    resume_path: str | None = None  # resume prompts only
     answered: bool = False
 
 

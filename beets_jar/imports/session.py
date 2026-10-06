@@ -105,11 +105,13 @@ class WebImportSession(importer.ImportSession):
     def run(self):
         # No SessionStarted here: start_web_import applies it to the registry
         # before this thread starts, so the session shows up immediately.
-        status, error = SessionStatus.COMPLETED, None
+        status = SessionStatus.COMPLETED
+        error = None
         try:
             super().run()
-        except Exception as e:
-            status, error = SessionStatus.FAILED, str(e)
+        except Exception as exception:
+            status = SessionStatus.FAILED
+            error = str(exception)
             log.exception(f"Import session {self.session_id} failed")
 
         finally:
@@ -245,13 +247,13 @@ class WebImportSession(importer.ImportSession):
         """
         # Standard, built-in choices.
         choices = [
-            PromptChoice("s", "Skip", lambda s, t: importer.Action.SKIP),
-            PromptChoice("u", "Use as-is", lambda s, t: importer.Action.ASIS),
+            PromptChoice("s", "Skip", lambda session, task: importer.Action.SKIP),
+            PromptChoice("u", "Use as-is", lambda session, task: importer.Action.ASIS),
         ]
         if task.is_album:
             choices += [
-                PromptChoice("t", "as Tracks", lambda s, t: importer.Action.TRACKS),
-                PromptChoice("g", "Group albums", lambda s, t: importer.Action.ALBUMS),
+                PromptChoice("t", "as Tracks", lambda session, task: importer.Action.TRACKS),
+                PromptChoice("g", "Group albums", lambda session, task: importer.Action.ALBUMS),
             ]
         choices += [
             # TODO: introduce beets.autotag.Candidates to remove these ignores
@@ -341,7 +343,7 @@ class WebImportSession(importer.ImportSession):
         return summary_string
 
     def should_resume(self, path: PathBytes) -> bool:
-        return self._ask("resume", path=displayable_path(path))
+        return self._ask("resume", resume_path=displayable_path(path))
 
 
 def validate_import_path(raw_path: str) -> str | None:
@@ -352,7 +354,7 @@ def validate_import_path(raw_path: str) -> str | None:
     return path
 
 
-def start_web_import(lib, imports, paths, *, restart: bool = False, seed_id: str = "") -> WebImportSession:
+def start_web_import(lib, import_registry, paths, *, restart: bool = False, seed_id: str = "") -> WebImportSession:
     """Create a session, register it in the registry right away, and run it in a thread.
 
     Must be called from the event loop (i.e. from an endpoint), because it
@@ -361,9 +363,9 @@ def start_web_import(lib, imports, paths, *, restart: bool = False, seed_id: str
     session = WebImportSession(
         lib=lib, paths=paths, loghandler=None, query=None, restart=restart, seed_id=seed_id
     )
-    imports.apply(
+    import_registry.apply(
         SessionStarted(
-            session.session_id, tuple(displayable_path(p) for p in session.paths)
+            session.session_id, tuple(displayable_path(path) for path in session.paths)
         )
     )
     threading.Thread(target=session.run, daemon=True).start()

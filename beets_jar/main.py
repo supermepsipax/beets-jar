@@ -65,22 +65,22 @@ def create_app(lib: Library | None = None) -> FastAPI:
             owns_lib = True
         loop = asyncio.get_running_loop()
 
-        imports = ImportRegistry()
+        import_registry = ImportRegistry()
         import_event_bus.bind(loop)
-        import_consumer = asyncio.create_task(import_event_bus.consume(imports.apply))
-        app.state.imports = imports
+        import_consumer = asyncio.create_task(import_event_bus.consume(import_registry.apply))
+        app.state.import_registry = import_registry
 
-        processes = ProcessRegistry()
+        process_registry = ProcessRegistry()
         process_event_bus.bind(loop)
-        process_consumer = asyncio.create_task(process_event_bus.consume(processes.apply))
+        process_consumer = asyncio.create_task(process_event_bus.consume(process_registry.apply))
         runner = ProcessRunner(app.state.lib)
         runner.start()
-        app.state.processes = processes
+        app.state.process_registry = process_registry
         app.state.runner = runner
 
         def close_streams():
-            imports.close()
-            processes.close()
+            import_registry.close()
+            process_registry.close()
 
         previous_handlers = _close_streams_on_signal(loop, close_streams)
 

@@ -106,26 +106,28 @@ class JarPlugin(BeetsPlugin):
             import_event_bus.emit(TaskFinished(session_id, task_id, TaskOutcome.IMPORTED))
 
     def commands(self):
-        cmd = ui.Subcommand("jar", help="start the Beets-Jar web interface (or: jar generate-key)")
-        cmd.parser.usage += "\n       beet jar generate-key"
+        jar_command = ui.Subcommand(
+            "jar", help="start the Beets-Jar web interface (or: jar generate-key)"
+        )
+        jar_command.parser.usage += "\n       beet jar generate-key"
 
-        cmd.parser.add_option(
+        jar_command.parser.add_option(
             "--host", default=None,
             help="server hostname (default: from config or 127.0.0.1)"
         )
-        cmd.parser.add_option(
+        jar_command.parser.add_option(
             "-p", "--port", type="int", default=None,
             help="server port (default: from config or 7734)"
         )
-        cmd.parser.add_option(
+        jar_command.parser.add_option(
             "-d", "--debug", action="store_true", default=False,
             help="enable debug/reload mode"
         )
-        cmd.parser.add_option(
+        jar_command.parser.add_option(
             "-D", "--detach", action="store_true", default=False,
             help="run the server as a background daemon"
         )
-        cmd.parser.add_option(
+        jar_command.parser.add_option(
             "--dev", action="store_true", default=False,
             help="enable hot reload on source changes"
         )
@@ -152,5 +154,5 @@ class JarPlugin(BeetsPlugin):
             else:
                 from beets_jar.main import create_app
                 _serve(create_app(lib=lib), host, port, opts.debug, forwarded_allow_ips)
-        cmd.func = func
-        return [cmd]
+        jar_command.func = func
+        return [jar_command]

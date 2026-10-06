@@ -113,7 +113,7 @@ def in_progress(registry: ImportRegistry) -> list[PanelGroup]:
     for session in registry.sessions.values():
         if session.status in FINISHED_SESSION_STATUSES:
             continue
-        tasks = [t for t in session.tasks.values() if t.outcome is None]
+        tasks = [task for task in session.tasks.values() if task.outcome is None]
         resume = session.open_prompt is not None
         groups.append(PanelGroup(
             session=session,
@@ -129,7 +129,7 @@ def finished(registry: ImportRegistry) -> list[PanelGroup]:
     """Sessions with finished tasks, newest first. A running session can be in both panels."""
     groups = []
     for session in reversed(list(registry.sessions.values())):
-        done = [t for t in session.tasks.values() if t.outcome is not None]
+        done = [task for task in session.tasks.values() if task.outcome is not None]
         is_finished = session.status in FINISHED_SESSION_STATUSES
         empty_note = None
         if is_finished and not session.tasks:

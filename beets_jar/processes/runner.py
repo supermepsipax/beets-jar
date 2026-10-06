@@ -59,9 +59,9 @@ def _isolated_run():
         beets_config.sources[:] = saved_sources
 
 
-def _build_opts(sub: Subcommand, spec: ProcessSpec):
+def _build_opts(subcommand: Subcommand, spec: ProcessSpec):
     """The command's own option defaults, with the spec's overrides on top."""
-    opts, _ = sub.parse_args([])
+    opts, _ = subcommand.parse_args([])
     for dest, value in spec.overrides.items():
         setattr(opts, dest, value)
     if spec.album is not None:
@@ -132,7 +132,8 @@ class ProcessRunner:
                 if self._stopped:
                     return
                 process_id, spec = self._pending.popitem(last=False)
-                self._current, self._cancel_current = process_id, False
+                self._current = process_id
+                self._cancel_current = False
             try:
                 self.run(process_id, spec)
             except Exception:  # never let one process take the worker down
@@ -149,16 +150,16 @@ class ProcessRunner:
     def run(self, process_id: str, spec: ProcessSpec):
         """Run one process on the calling thread (the worker, or a test)."""
         self.bus.emit(ProcessStarted(process_id))
-        sub = find_subcommand(spec.plugin, spec.command)
-        if sub is None:
+        subcommand = find_subcommand(spec.plugin, spec.command)
+        if subcommand is None:
             self.bus.emit(
                 ProcessFinished(
-                    process_id, ProcessStatus.FAILED, f"{spec.name} isn't available"
+                    process_id, ProcessStatus.FAILED, f"{spec.display_name} isn't available"
                 )
             )
             return
 
-        opts = _build_opts(sub, spec)
+        opts = _build_opts(subcommand, spec)
         status = ProcessStatus.COMPLETED
         failed = 0
         with _isolated_run():
@@ -166,7 +167,7 @@ class ProcessRunner:
                 if self._cancel_current:
                     status = ProcessStatus.CANCELLED
                     break
-                error = self._run_query(sub, opts, spec, query)
+                error = self._run_query(subcommand, opts, spec, query)
                 if error is not None:
                     failed += 1
                 self.bus.emit(TargetFinished(process_id, error is None, error))
@@ -176,11 +177,11 @@ class ProcessRunner:
             status = ProcessStatus.FAILED
         self.bus.emit(ProcessFinished(process_id, status))
 
-    def _run_query(self, sub: Subcommand, opts, spec: ProcessSpec, query: str) -> str | None:
+    def _run_query(self, subcommand: Subcommand, opts, spec: ProcessSpec, query: str) -> str | None:
         """Run the command on one query. Returns what went wrong, or None if it worked."""
         try:
-            sub.func(self.lib, opts, [query])
+            subcommand.func(self.lib, opts, [query])
         except (Exception, SystemExit) as error:
-            log.exception("%s failed on %r", spec.name, query)
+            log.exception("%s failed on %r", spec.display_name, query)
             return str(error) or type(error).__name__
         return None

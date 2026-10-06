@@ -29,7 +29,7 @@
 	{% if candidate.notes %}<p class="candidate-detail-note">{{ candidate.notes }}</p>{% endif %}
 
 	<form hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="type" value="candidate">
+		<input type="hidden" name="choice_type" value="candidate">
 		<input type="hidden" name="value" value="{{ candidate.index }}">
 		<button type="submit" class="button-block">Apply</button>
 	</form>

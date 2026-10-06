@@ -10,12 +10,12 @@ def get_lib(request: Request) -> Library:
     return request.app.state.lib
 
 
-def get_imports(request: Request) -> ImportRegistry:
-    return request.app.state.imports
+def get_import_registry(request: Request) -> ImportRegistry:
+    return request.app.state.import_registry
 
 
-def get_processes(request: Request) -> ProcessRegistry:
-    return request.app.state.processes
+def get_process_registry(request: Request) -> ProcessRegistry:
+    return request.app.state.process_registry
 
 
 def get_runner(request: Request) -> ProcessRunner:

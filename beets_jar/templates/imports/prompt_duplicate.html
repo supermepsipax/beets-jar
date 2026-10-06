@@ -13,7 +13,7 @@
 	<div class="work-actions">
 		{% for choice in prompt.choices %}
 		<form hx-post="{{ choose_url }}" hx-target="#work-area">
-			<input type="hidden" name="type" value="action">
+			<input type="hidden" name="choice_type" value="action">
 			<input type="hidden" name="value" value="{{ choice.short }}">
 			<button type="submit" class="button-secondary">{{ choice.long }}</button>
 		</form>

@@ -6,7 +6,7 @@
 {% set ids = rows | map(attribute="id") | map("string") | list %}
 <div class="results" x-data='{ all: {{ ids | tojson }}, selected: {{ ids | tojson }} }'>
 	<form id="results-form" @submit.prevent>
-		<input type="hidden" name="mode" value="{{ kind }}">
+		<input type="hidden" name="kind" value="{{ kind }}">
 		<input type="hidden" name="query" value="{{ query }}">
 	</form>
 
@@ -41,7 +41,7 @@
 			<span class="result-actions">
 				<button type="button" class="button-secondary button-sm" disabled title="Coming soon">Edit</button>
 				<button type="button" class="button-danger button-sm"
-					hx-get="/library/modal/delete?kind={{ kind }}&id={{ row.id }}"
+					hx-get="/library/modal/delete?kind={{ kind }}&album_or_item_id={{ row.id }}"
 					hx-target="#modal-root"
 					hx-swap="innerHTML">Delete</button>
 			</span>
