@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import threading
-from collections import Counter
 from itertools import chain
 from queue import Queue
 from typing import TYPE_CHECKING, Literal
@@ -77,11 +76,11 @@ class _LocalConfig:
 
 class WebImportSession(importer.ImportSession):
     """
-    An import session that can be triggered and ran with another asynchronous process.
+    An import session that runs on its own thread and asks the browser instead of the terminal.
 
-    Goes through the normal import process but when user intervention is required, blocks
-    its main thread while it waits for a response. Responses are passed in via stored queue objects
-    based on unique identifiers.
+    Goes through the normal import process, but when the user has to decide something it
+    posts a Prompt (carrying a reply Queue) to the ImportRegistry and blocks its thread until
+    the work area answers.
     """
 
     def __init__(self, *args, seed_id: str = "", restart: bool = False, **kwargs):
@@ -144,21 +143,19 @@ class WebImportSession(importer.ImportSession):
         finally:
             import_event_bus.emit(PromptClosed(self.session_id, prompt.prompt_id))
 
+    # ---- choosing a candidate ----
+
     def choose_match(self, task: ImportTask) -> AlbumMatch | importer.Action:
         """Given an initial autotagging of items, go through an interactive
         dance with the user to ask for a choice of metadata. Returns an
         AlbumMatch object, ASIS, or SKIP.
         """
-
-        if self.seed_id and not task.candidates:
-            # seed matched nothing (typo, wrong provider, provider plugin not enabled): fall back to a normal search
-            task.lookup_candidates([])
+        self._fall_back_from_empty_seed(task)
 
         # Let plugins display info or prompt the user before we go through the
         # process of selecting candidate.
         results = plugins.send("import_task_before_choice", session=self, task=task)
         actions = [action for action in results if action]
-
         if len(actions) == 1:
             return actions[0]
         if len(actions) > 1:
@@ -166,136 +163,121 @@ class WebImportSession(importer.ImportSession):
                 "Only one handler for `import_task_before_choice` may return an action."
             )
 
-        # Take immediate action if appropriate.
-        assert task.rec is not None
-        assert task.candidates is not None
-        action = _summary_judgment(task.rec, self.config)
-        if action == importer.Action.APPLY:
-            match = task.candidates[0]
-            # TODO: introduce AlbumImportTask to remove this assertion
-            assert isinstance(match, AlbumMatch)
-            return match
-        if action is not None:
-            return action
-        if task.rec == Recommendation.strong and not self.config["timid"]:
-            assert isinstance(task.candidates[0], AlbumMatch)
-            return task.candidates[0]
-
-        # Loop until we have a choice.
-        while True:
-            # Ask for a choice from the user. The reply's choice may be an
-            # `importer.Action`, an `AlbumMatch` object for a specific
-            # selection, or a `PromptChoice`.
-            choices = self._get_choices(task)
-            web_choice: WebChoice = self._ask("candidate", task, choices)
-
-            # We have a specific match selection.
-            # or, basic choices that require no more action here.
-            if isinstance(web_choice.choice, AlbumMatch) or (
-                isinstance(web_choice.choice, importer.Action)
-                and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
-            ):
-                # Pass selection to main control flow.
-                return web_choice.choice
-
-            # Plugin-provided choices. We invoke the associated callback
-            # function.
-            if (
-                isinstance(web_choice.choice, PromptChoice)
-                and web_choice.choice.callback
-            ):
-                if web_choice.choice.short == ChoiceType.SEARCH:
-                    post_choice = web_choice.choice.callback(
-                        self,
-                        task,
-                        web_choice.follow_up_info["artist"],
-                        web_choice.follow_up_info["query"],
-                    )
-                elif web_choice.choice.short == ChoiceType.ID:
-                    post_choice = web_choice.choice.callback(
-                        self, task, web_choice.follow_up_info["mbid"]
-                    )
-                else:
-                    post_choice = web_choice.choice.callback(self, task)
-                if isinstance(post_choice, importer.Action):
-                    return post_choice
-                elif isinstance(post_choice, Proposal):
-                    task.candidates = post_choice.candidates
-                    task.rec = post_choice.recommendation
-            # Anything else (e.g. a plugin choice without a callback): ask again
+        return self._choose(task, AlbumMatch)
 
     def choose_item(self, task: SingletonImportTask) -> TrackMatch | importer.Action:
         """Ask the user for a choice about tagging a single item. Returns
         either an action constant or a TrackMatch object.
         """
+        self._fall_back_from_empty_seed(task)
+        return self._choose(task, TrackMatch)
 
+    def _fall_back_from_empty_seed(self, task) -> None:
         if self.seed_id and not task.candidates:
-            # seed matched nothing (typo, wrong provider, provider plugin not enabled): fall back to a normal search
+            # seed matched nothing (typo, wrong provider, provider plugin not enabled):
+            # fall back to a normal search
             task.lookup_candidates([])
 
-        # Take immediate action if appropriate.
+    def _choose(self, task, match_type: type[AlbumMatch] | type[TrackMatch]):
+        """Take the top candidate when no question is needed; otherwise ask until
+        the user picks a candidate (a `match_type`) or an action ends the task."""
+        decided = self._decide_without_asking(task, match_type)
+        if decided is not None:
+            return decided
+
+        while True:
+            # The reply's choice is a candidate match or a PromptChoice (see imports/replies.py)
+            web_choice: WebChoice = self._ask("candidate", task, self._get_choices(task))
+            if isinstance(web_choice.choice, match_type):
+                return web_choice.choice
+
+            if isinstance(web_choice.choice, PromptChoice) and web_choice.choice.callback:
+                result = self._run_choice_callback(task, web_choice)
+                if isinstance(result, importer.Action):
+                    return result
+                if isinstance(result, Proposal):  # a new search: ask again with its candidates
+                    task.candidates = result.candidates
+                    task.rec = result.recommendation
+            # Anything else (e.g. a plugin choice without a callback): ask again
+
+    def _decide_without_asking(self, task, match_type):
+        """Quiet mode's verdict, or the top candidate of a strong match (unless timid).
+        None means the user has to be asked."""
         # TODO: introduce beets.autotag.Candidates to remove these assertions
         assert task.rec is not None
         assert task.candidates is not None
         action = _summary_judgment(task.rec, self.config)
         if action == importer.Action.APPLY:
             match = task.candidates[0]
-            # TODO: introduce AlbumImportTask to remove this assertion
-            assert isinstance(match, TrackMatch)
+            assert isinstance(match, match_type)
             return match
         if action is not None:
             return action
         if task.rec == Recommendation.strong and not self.config["timid"]:
-            assert isinstance(task.candidates[0], TrackMatch)
+            assert isinstance(task.candidates[0], match_type)
             return task.candidates[0]
+        return None
 
-        while True:
-            # Ask for a choice.
-            choices = self._get_choices(task)
-            web_choice: WebChoice = self._ask("candidate", task, choices)
+    def _run_choice_callback(self, task, web_choice: WebChoice):
+        """Run a prompt choice's callback. Returns an importer.Action, a Proposal
+        (new candidates from a search or ID lookup), or None."""
+        choice = web_choice.choice
+        info = web_choice.follow_up_info
+        if choice.short == ChoiceType.SEARCH:
+            return choice.callback(self, task, info["artist"], info["query"])
+        if choice.short == ChoiceType.ID:
+            return choice.callback(self, task, info["mbid"])
+        return choice.callback(self, task)
 
-            # We have a specific match selection.
-            # or, basic web_choice.choices that require no more action here.
-            if isinstance(web_choice.choice, TrackMatch) or (
-                isinstance(web_choice.choice, importer.Action)
-                and web_choice.choice in (importer.Action.SKIP, importer.Action.ASIS)
-            ):
-                # Pass selection to main control flow.
-                return web_choice.choice
+    def _get_choices(self, task: ImportTask) -> list[PromptChoice]:
+        """Get the list of prompt choices that should be presented to the
+        user. This consists of both built-in choices and ones provided by
+        plugins.
 
-            # Plugin-provided web_choice.choices. We invoke the associated callback
-            # function.
-            if (
-                isinstance(web_choice.choice, PromptChoice)
-                and web_choice.choice.callback
-            ):
-                if web_choice.choice.short == ChoiceType.SEARCH:
-                    post_choice = web_choice.choice.callback(
-                        self,
-                        task,
-                        web_choice.follow_up_info["artist"],
-                        web_choice.follow_up_info["query"],
-                    )
-                elif web_choice.choice.short == ChoiceType.ID:
-                    post_choice = web_choice.choice.callback(
-                        self, task, web_choice.follow_up_info["mbid"]
-                    )
-                else:
-                    post_choice = web_choice.choice.callback(self, task)
-                if isinstance(post_choice, importer.Action):
-                    return post_choice
-                elif isinstance(post_choice, Proposal):
-                    task.candidates = post_choice.candidates
-                    task.rec = post_choice.recommendation
+        The `before_choose_candidate` event is sent to the plugins, with
+        session and task as its parameters. Plugins are responsible for
+        checking the right conditions and returning a list of `PromptChoice`s,
+        which is flattened and checked for conflicts.
 
-    def _report_item_summary(
-        self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool
-    ) -> str:
-        summary_string = f"{prefix}: {summarize_items(items, not is_album)}"
-        if self.config["duplicate_verbose_prompt"].get(bool):
-            for dup in items:
-                summary_string += f"\n  {dup}"
-        return summary_string
+        A plugin choice whose short letter is already taken (by a built-in
+        choice, by "a" for Apply, or by an earlier plugin choice) is dropped
+        with a warning.
+        """
+        # Standard, built-in choices.
+        choices = [
+            PromptChoice("s", "Skip", lambda s, t: importer.Action.SKIP),
+            PromptChoice("u", "Use as-is", lambda s, t: importer.Action.ASIS),
+        ]
+        if task.is_album:
+            choices += [
+                PromptChoice("t", "as Tracks", lambda s, t: importer.Action.TRACKS),
+                PromptChoice("g", "Group albums", lambda s, t: importer.Action.ALBUMS),
+            ]
+        choices += [
+            # TODO: introduce beets.autotag.Candidates to remove these ignores
+            #  context: Candidates is a Sequence which will be updated in place
+            #  by manual_search and manual_id, with return types as None.
+            PromptChoice("e", "Enter search", web_search),  # type: ignore[arg-type]
+            PromptChoice("i", "enter Id", web_id),  # type: ignore[arg-type]
+            PromptChoice("b", "aBort", abort_action),
+        ]
+
+        plugin_choices = chain.from_iterable(
+            plugins.send("before_choose_candidate", session=self, task=task)
+        )
+        taken = {"a"} | {choice.short for choice in choices}  # "a" is Apply, chosen by candidate
+        for plugin_choice in plugin_choices:
+            if plugin_choice.short in taken:
+                log.warning(
+                    "Prompt choice '{0.long}' removed: short letter '{0.short}' is already taken",
+                    plugin_choice,
+                )
+                continue
+            taken.add(plugin_choice.short)
+            choices.append(plugin_choice)
+        return choices
+
+    # ---- duplicates and resuming ----
 
     def get_duplicate_action(self, task, found_duplicates) -> DuplicateAction:
         action = super().get_duplicate_action(task, found_duplicates)
@@ -322,112 +304,44 @@ class WebImportSession(importer.ImportSession):
         """Decide what to do when a new album or item seems similar to one
         that's already in the library.
         """
-        is_album = task.is_album
         if self.config["quiet"]:
             # In quiet mode, don't prompt -- just skip.
             log.info("Skipping.")
             return "s"
-        choices = []
-        for action in DuplicateAction:
-            if action is DuplicateAction.ASK:
-                continue
-            choice: PromptChoice = PromptChoice(action.value, action.text, None)
-            choices.append(choice)
+        choices = [
+            PromptChoice(action.value, action.text, None)
+            for action in DuplicateAction
+            if action is not DuplicateAction.ASK
+        ]
 
-        # Print some detail about the existing and new items so the
-        # user can make an informed decision.
-        duplicate_summary = {"old": []}
+        # Some detail about the existing and new items so the user can make an
+        # informed decision.
+        old_summaries = []
         for duplicate in found_duplicates:
-            duplicate_summary["old"].append(
-                self._report_item_summary(
-                    "Old",
-                    (
-                        list(duplicate.items())
-                        if isinstance(duplicate, Album)
-                        else [duplicate]
-                    ),
-                    is_album,
-                )
-            )
+            items = list(duplicate.items()) if isinstance(duplicate, Album) else [duplicate]
+            old_summaries.append(self._report_item_summary("Old", items, task.is_album))
+        duplicate_summary = {
+            "old": old_summaries,
+            "new": self._report_item_summary("New", task.imported_items(), task.is_album),
+        }
 
-        duplicate_summary["new"] = self._report_item_summary(
-            "New", task.imported_items(), is_album
-        )
         web_choice: WebChoice = self._ask(
             "duplicate", task, choices, duplicate_summary=duplicate_summary
         )
         assert isinstance(web_choice.choice, PromptChoice)
         return web_choice.choice.short
 
+    def _report_item_summary(
+        self, prefix: Literal["Old", "New"], items: list[Item], is_album: bool
+    ) -> str:
+        summary_string = f"{prefix}: {summarize_items(items, not is_album)}"
+        if self.config["duplicate_verbose_prompt"].get(bool):
+            for item in items:
+                summary_string += f"\n  {item}"
+        return summary_string
+
     def should_resume(self, path: PathBytes) -> bool:
         return self._ask("resume", path=displayable_path(path))
-
-    def _get_choices(self, task: ImportTask) -> list[PromptChoice]:
-        """Get the list of prompt choices that should be presented to the
-        user. This consists of both built-in choices and ones provided by
-        plugins.
-
-        The `before_choose_candidate` event is sent to the plugins, with
-        session and task as its parameters. Plugins are responsible for
-        checking the right conditions and returning a list of `PromptChoice`s,
-        which is flattened and checked for conflicts.
-
-        If two or more choices have the same short letter, a warning is
-        emitted and all but one choices are discarded, giving preference
-        to the default importer choices.
-
-        Returns a list of `PromptChoice`s.
-        """
-        # Standard, built-in choices.
-        choices = [
-            PromptChoice("s", "Skip", lambda s, t: importer.Action.SKIP),
-            PromptChoice("u", "Use as-is", lambda s, t: importer.Action.ASIS),
-        ]
-        if task.is_album:
-            choices += [
-                PromptChoice("t", "as Tracks", lambda s, t: importer.Action.TRACKS),
-                PromptChoice("g", "Group albums", lambda s, t: importer.Action.ALBUMS),
-            ]
-        choices += [
-            # TODO: introduce beets.autotag.Candidates to remove these ignores
-            #  context: Candidates is a Sequence which will be updated in place
-            #  by manual_search and manual_id, with return types as None.
-            PromptChoice("e", "Enter search", web_search),  # type: ignore[arg-type]
-            PromptChoice("i", "enter Id", web_id),  # type: ignore[arg-type]
-            PromptChoice("b", "aBort", abort_action),
-        ]
-
-        # Send the before_choose_candidate event and flatten list.
-        extra_choices = list(
-            chain(*plugins.send("before_choose_candidate", session=self, task=task))
-        )
-
-        # Add a "dummy" choice for the other baked-in option, for
-        # duplicate checking.
-        all_choices = [
-            PromptChoice("a", "Apply", lambda s, t: importer.Action.APPLY),
-            *choices,
-            *extra_choices,
-        ]
-
-        # Check for conflicts.
-        short_letters = [c.short for c in all_choices]
-        if len(short_letters) != len(set(short_letters)):
-            # Duplicate short letter has been found.
-            duplicates = [i for i, count in Counter(short_letters).items() if count > 1]
-            for short in duplicates:
-                # Keep the first of the choices, removing the rest.
-                dup_choices = [c for c in all_choices if c.short == short]
-                for c in dup_choices[1:]:
-                    log.warning(
-                        "Prompt choice '{0.long}' removed due to conflict "
-                        "with '{1[0].long}' (short letter: '{0.short}')",
-                        c,
-                        dup_choices,
-                    )
-                    extra_choices.remove(c)
-
-        return choices + extra_choices
 
 
 def validate_import_path(raw_path: str) -> str | None:
@@ -475,17 +389,18 @@ def summarize_items(items: list[Item], singleton: bool) -> str:
         # A single format.
         summary_parts.append(items[0].format)
     else:
-        # Enumerate all the formats by decreasing frequencies:
-        for fmt, count in sorted(
-            format_counts.items(),
-            key=lambda fmt_and_count: (-fmt_and_count[1], fmt_and_count[0]),
-        ):
-            summary_parts.append(f"{fmt} {count}")
+        # Enumerate all the formats by decreasing frequencies, then by name
+        def by_count_then_name(format_and_count):
+            file_format, count = format_and_count
+            return -count, file_format
+
+        for file_format, count in sorted(format_counts.items(), key=by_count_then_name):
+            summary_parts.append(f"{file_format} {count}")
 
     if items:
-        average_bitrate = sum([item.bitrate for item in items]) / len(items)
-        total_duration = sum([item.length for item in items])
-        total_filesize = sum([item.filesize for item in items])
+        average_bitrate = sum(item.bitrate for item in items) / len(items)
+        total_duration = sum(item.length for item in items)
+        total_filesize = sum(item.filesize for item in items)
         summary_parts.append(f"{int(average_bitrate / 1000)}kbps")
         if items[0].format == "FLAC":
             sample_bits = (
@@ -534,15 +449,22 @@ def _summary_judgment(rec: Recommendation, local_config) -> importer.Action | No
     return action
 
 
+# ---- prompt choice callbacks (beets calls these as callback(session, task, ...)) ----
+
+
+def _tagger(task):
+    """beets' lookup function for this kind of task."""
+    return tag_item if isinstance(task, SingletonImportTask) else tag_album
+
+
 def web_search(session, task, artist, name):
     """Get a new `Proposal` using manual search criteria.
 
     Input either an artist and album (for full albums) or artist and
     track name (for singletons) for manual search.
     """
-
-    method = tag_item if isinstance(task, SingletonImportTask) else tag_album
-    return method(task.source, artist.strip(), name.strip())
+    tag = _tagger(task)
+    return tag(task.source, artist.strip(), name.strip())
 
 
 def web_id(session, task, mbid):
@@ -550,8 +472,8 @@ def web_id(session, task, mbid):
 
     Input an ID, either for an album ("release") or a track ("recording").
     """
-    method = tag_item if isinstance(task, SingletonImportTask) else tag_album
-    return method(task.source, search_ids=mbid.split())
+    tag = _tagger(task)
+    return tag(task.source, search_ids=mbid.split())
 
 
 def abort_action(session: WebImportSession, task: ImportTask) -> None:
