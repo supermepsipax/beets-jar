@@ -23,12 +23,20 @@ def require_api_key(request: Request) -> None:
         # most likely a raw key pasted in by mistake; fail closed instead of matching it
         log.warning("jar.api_key_hash is not a SHA-256 hex digest; run `beet jar generate-key`")
         raise HTTPException(404)
-    supplied = request.headers.get("x-api-key", "")
-    auth = request.headers.get("authorization", "")
-    if not supplied and auth.lower().startswith("bearer "):
-        supplied = auth[7:]
+    supplied = _supplied_api_key(request)
     if not supplied or not verify_api_key(supplied, stored):
         raise HTTPException(401, "Invalid API key")
+
+
+def _supplied_api_key(request: Request) -> str:
+    """The key from the X-API-Key header, or else from `Authorization: Bearer <key>`."""
+    key = request.headers.get("x-api-key", "")
+    if key:
+        return key
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth[len("bearer "):]
+    return ""
 
 
 router = APIRouter(prefix="/api/v1", tags=["api"], dependencies=[Depends(require_api_key)])

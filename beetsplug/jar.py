@@ -23,19 +23,29 @@ TASK_PHASES: dict[EventType, str] = {
     "import_task_files": "FILES",
 }
 
+def _serve(app, host, port, debug, forwarded_allow_ips, **extra):
+    """uvicorn.run with the settings every way of starting the server shares."""
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="debug" if debug else "info",
+        forwarded_allow_ips=forwarded_allow_ips,
+        timeout_graceful_shutdown=5,
+        **extra,
+    )
+
 def _run_detached(host, port, debug, forwarded_allow_ips):
     """Forks server into a background process, probably only works on Linux/Mac"""
     pid = os.fork()
     if pid > 0:
         print(f"Jar server started in background (PID {pid})")
-        print(f"Listending on http://{host}:{port}")
+        print(f"Listening on http://{host}:{port}")
         return
     os.setsid()
     sys.stdin.close()
     from beets_jar.main import create_app
-    app = create_app()
-    uvicorn.run(app, host=host, port=port, log_level="debug" if debug else "info",
-                forwarded_allow_ips=forwarded_allow_ips, timeout_graceful_shutdown=5)
+    _serve(create_app(), host, port, debug, forwarded_allow_ips)
 
 def _generate_key():
     """Print a new API key and the config line holding its hash. The key is not stored anywhere."""
@@ -134,25 +144,13 @@ class JarPlugin(BeetsPlugin):
 
             elif opts.dev:
                 reload_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                uvicorn.run(
-                    "beets_jar.main:app",
-                    host=host,
-                    port=port,
-                    reload=True,
-                    reload_dirs=[reload_dir],
-                    log_level="debug" if opts.debug else "info",
-                    forwarded_allow_ips=forwarded_allow_ips,
-                    timeout_graceful_shutdown=5,
+                _serve(
+                    "beets_jar.main:app", host, port, opts.debug, forwarded_allow_ips,
+                    reload=True, reload_dirs=[reload_dir],
                 )
 
             else:
                 from beets_jar.main import create_app
-                app = create_app(lib=lib)
-                uvicorn.run(
-                    app, host=host, port=port,
-                    log_level="debug" if opts.debug else "info",
-                    forwarded_allow_ips=forwarded_allow_ips,
-                    timeout_graceful_shutdown=5,
-                )
+                _serve(create_app(lib=lib), host, port, opts.debug, forwarded_allow_ips)
         cmd.func = func
         return [cmd]

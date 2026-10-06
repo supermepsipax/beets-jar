@@ -100,14 +100,7 @@ def render_session(request, imports, session_id):
     if next_up and next_up[0] == session_id:
         return render_task(request, imports, *next_up)
     if session.status not in FINISHED_SESSION_STATUSES:
-        return _work(
-            request,
-            "work_waiting",
-            session=session,
-            task=None,
-            poll_url=_work_url(session_id),
-            message="Looking up…",
-        )
+        return _render_waiting(request, session, None, _work_url(session_id), "Looking up…")
     return render_next(
         request, imports, note=f"{presenters.session_name(session)} doesn't need anything."
     )
@@ -122,24 +115,18 @@ def render_task(
     fall through to the next task that needs the user.
     """
     session = imports.sessions.get(session_id)
-    task = session.tasks.get(task_id) if session and task_id else None
-    if session is None:
-        prompt = None
-    elif task_id is None:
+    task = None
+    prompt = None
+    if session is not None and task_id is None:
         prompt = session.open_prompt
-    else:
+    elif session is not None:
+        task = session.tasks.get(task_id)
         prompt = task.open_prompt if task else None
 
     if prompt is None:
         if follow and task is not None and task.outcome is None:
-            return _work(
-                request,
-                "work_waiting",
-                session=session,
-                task=task,
-                poll_url=_work_url(session_id, task_id, follow=True),
-                message="Searching…",
-            )
+            poll_url = _work_url(session_id, task_id, follow=True)
+            return _render_waiting(request, session, task, poll_url, "Searching…")
         return render_next(request, imports, note=note, prefer_session=session_id)
 
     context = {
@@ -151,17 +138,29 @@ def render_task(
         "choose_url": _choose_url(session_id, prompt.prompt_id),
     }
     if prompt.kind == "candidate":
-        # Reading prompt.task is safe: its pipeline thread is blocked on reply.get()
-        candidates = [
-            presenters.candidate_view(match, index)
-            for index, match in enumerate(prompt.task.candidates or [], start=1)
-        ]
-        context.update(
-            candidates=candidates,
-            candidate=candidates[0] if candidates else None,
-            is_album=prompt.task.is_album,
-        )
+        context.update(_candidate_context(prompt))
     return _work(request, "work_task", **context)
+
+
+def _candidate_context(prompt) -> dict:
+    """The candidate list, and the first candidate's details, for a candidate prompt."""
+    # Reading prompt.task is safe: its pipeline thread is blocked on reply.get()
+    candidates = [
+        presenters.candidate_view(match, index)
+        for index, match in enumerate(prompt.task.candidates or [], start=1)
+    ]
+    return {
+        "candidates": candidates,
+        "candidate": candidates[0] if candidates else None,
+        "is_album": prompt.task.is_album,
+    }
+
+
+def _render_waiting(request, session, task, poll_url: str, message: str):
+    """A placeholder card that polls `poll_url` until there's something to show."""
+    return _work(
+        request, "work_waiting", session=session, task=task, poll_url=poll_url, message=message
+    )
 
 
 # ---------------------------------------------------------------- work-area routes
@@ -282,11 +281,13 @@ async def answer_prompt(
     prompt.answered = True  # before put(): a double click can't send two replies
     prompt.reply.put(reply)
 
-    if (
+    # A search or ID lookup: show "Searching…" until its candidates arrive
+    starts_search = (
         prompt.kind == "candidate"
         and type == "action"
         and value in (ChoiceType.SEARCH, ChoiceType.ID)
-    ):
+    )
+    if starts_search:
         return render_task(request, imports, session_id, task_id, follow=True)
     if task_id is not None:
         await imports.wait_for_followup(session_id, task_id, prompt_id)

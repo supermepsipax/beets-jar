@@ -27,6 +27,12 @@ OUTCOME_TAGS = {
     TaskOutcome.FAILED: ("Failed", "danger"),
 }
 
+# What the Finished panel says for a finished session that had no tasks at all
+EMPTY_SESSION_NOTES = {
+    SessionStatus.FAILED: "Couldn't import",
+    SessionStatus.ABORTED: "Stopped",
+}
+
 # Friendlier names for beets' built-in prompt choices; plugin choices keep their own
 CHOICE_LABELS = {
     "s": "Skip",
@@ -127,10 +133,7 @@ def finished(registry: ImportRegistry) -> list[PanelGroup]:
         is_finished = session.status in FINISHED_SESSION_STATUSES
         empty_note = None
         if is_finished and not session.tasks:
-            empty_note = {
-                SessionStatus.FAILED: "Couldn't import",
-                SessionStatus.ABORTED: "Stopped",
-            }.get(session.status, "Nothing to import")
+            empty_note = EMPTY_SESSION_NOTES.get(session.status, "Nothing to import")
         if done or empty_note:
             groups.append(PanelGroup(
                 session=session,
@@ -144,40 +147,28 @@ def finished(registry: ImportRegistry) -> list[PanelGroup]:
 
 # ---------- candidates ----------
 
-def _plural(n: int, word: str) -> str:
-    return f"{n} {word}{'s' if n != 1 else ''}"
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}{'s' if count != 1 else ''}"
+
+
+def _join_present(*parts) -> str:
+    """'2018 · CD · CA' from the parts that are set."""
+    return " · ".join(str(part) for part in parts if part)
 
 
 def candidate_view(match, index: int) -> CandidateView:
     info = match.info
     year = str(info.get("year") or "")
     pct = max(0, round((1 - match.distance.distance) * 100))
-    tracks: list[TrackRow] = []
-    notes = ""
 
     if isinstance(match, AlbumMatch):
-        meta = " · ".join(str(v) for v in (year, info.get("media"), info.get("country")) if v)
-        pairs = sorted(
-            match.item_info_pairs,
-            key=lambda pair: (pair[1].get("medium") or 0, pair[1].get("index") or 0),
-        )
-        for item, track in pairs:
-            new_title = track.get("title") or ""
-            old_title = item.title or ""
-            number = track.get("medium_index") or track.get("index") or ""
-            tracks.append(TrackRow(
-                number=str(number),
-                title=new_title,
-                old_title=old_title if old_title and old_title != new_title else None,
-            ))
-        bits = []
-        if match.extra_tracks:
-            bits.append(_plural(len(match.extra_tracks), "track") + " missing")
-        if match.extra_items:
-            bits.append(_plural(len(match.extra_items), "extra file"))
-        notes = " · ".join(bits)
+        meta = _join_present(year, info.get("media"), info.get("country"))
+        tracks = _track_rows(match)
+        notes = _album_notes(match)
     else:
-        meta = " · ".join(v for v in (info.get("album"), year) if v)
+        meta = _join_present(info.get("album"), year)
+        tracks = []
+        notes = ""
 
     return CandidateView(
         index=index,
@@ -189,3 +180,32 @@ def candidate_view(match, index: int) -> CandidateView:
         tracks=tracks,
         notes=notes,
     )
+
+
+def _track_rows(match: AlbumMatch) -> list[TrackRow]:
+    """The candidate's tracks in disc order, each with the file's old title when it changes."""
+    def disc_order(pair):
+        _item, track = pair
+        return track.get("medium") or 0, track.get("index") or 0
+
+    rows = []
+    for item, track in sorted(match.item_info_pairs, key=disc_order):
+        new_title = track.get("title") or ""
+        old_title = item.title or ""
+        number = track.get("medium_index") or track.get("index") or ""
+        rows.append(TrackRow(
+            number=str(number),
+            title=new_title,
+            old_title=old_title if old_title and old_title != new_title else None,
+        ))
+    return rows
+
+
+def _album_notes(match: AlbumMatch) -> str:
+    """'2 tracks missing · 1 extra file'"""
+    notes = []
+    if match.extra_tracks:
+        notes.append(_plural(len(match.extra_tracks), "track") + " missing")
+    if match.extra_items:
+        notes.append(_plural(len(match.extra_items), "extra file"))
+    return " · ".join(notes)

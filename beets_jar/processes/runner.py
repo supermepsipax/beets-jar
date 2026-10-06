@@ -3,6 +3,7 @@
 import logging
 import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 from uuid import uuid4
 
 import beets.ui
@@ -10,6 +11,7 @@ from beets_jar.services.event_bus import process_event_bus
 from beets import config as beets_config
 from beets.exceptions import UserError
 from beets.library import Library
+from beets.ui import Subcommand
 
 from beets_jar.models.process_events import (
     ProcessFinished,
@@ -38,6 +40,33 @@ def _guarded_input(prompt=None):
 
 
 beets.ui.input_ = _guarded_input
+
+
+@contextmanager
+def _isolated_run():
+    """Block prompts while a command runs, and put the global config back afterwards.
+
+    Some plugins copy their options into the global config (lyrics does
+    config.set(vars(opts)); lastgenre and ftintitle do set_args(opts)).
+    Restoring it stops a one-off override sticking for the rest of the server's life.
+    """
+    saved_sources = list(beets_config.sources)
+    _prompts.blocked = True
+    try:
+        yield
+    finally:
+        _prompts.blocked = False
+        beets_config.sources[:] = saved_sources
+
+
+def _build_opts(sub: Subcommand, spec: ProcessSpec):
+    """The command's own option defaults, with the spec's overrides on top."""
+    opts, _ = sub.parse_args([])
+    for dest, value in spec.overrides.items():
+        setattr(opts, dest, value)
+    if spec.album is not None:
+        opts.album = spec.album
+    return opts
 
 
 class ProcessRunner:
@@ -129,40 +158,29 @@ class ProcessRunner:
             )
             return
 
-        opts, _ = sub.parse_args([])  # the command's own defaults
-        for dest, value in spec.overrides.items():
-            setattr(opts, dest, value)
-        if spec.album is not None:
-            opts.album = spec.album
-
-        # Some plugins copy their options into the global config (lyrics does
-        # config.set(vars(opts)); lastgenre and ftintitle do set_args(opts)).
-        # Put the config back afterwards so a one-off override doesn't stick
-        # for the rest of the server's life.
-        saved_sources = list(beets_config.sources)
-        status, failed = ProcessStatus.COMPLETED, 0
-        _prompts.blocked = True
-        try:
+        opts = _build_opts(sub, spec)
+        status = ProcessStatus.COMPLETED
+        failed = 0
+        with _isolated_run():
             for query in spec.queries:
                 if self._cancel_current:
                     status = ProcessStatus.CANCELLED
                     break
-                ok, detail = True, None
-                try:
-                    sub.func(self.lib, opts, [query])
-                except (Exception, SystemExit) as e:
-                    ok, detail = False, str(e) or type(e).__name__
+                error = self._run_query(sub, opts, spec, query)
+                if error is not None:
                     failed += 1
-                    log.exception("%s failed on %r", spec.name, query)
-                self.bus.emit(TargetFinished(process_id, ok, detail))
-        finally:
-            _prompts.blocked = False
-            beets_config.sources[:] = saved_sources
+                self.bus.emit(TargetFinished(process_id, error is None, error))
 
-        if (
-            status is ProcessStatus.COMPLETED
-            and spec.queries
-            and failed == len(spec.queries)
-        ):
+        every_query_failed = bool(spec.queries) and failed == len(spec.queries)
+        if status is ProcessStatus.COMPLETED and every_query_failed:
             status = ProcessStatus.FAILED
         self.bus.emit(ProcessFinished(process_id, status))
+
+    def _run_query(self, sub: Subcommand, opts, spec: ProcessSpec, query: str) -> str | None:
+        """Run the command on one query. Returns what went wrong, or None if it worked."""
+        try:
+            sub.func(self.lib, opts, [query])
+        except (Exception, SystemExit) as error:
+            log.exception("%s failed on %r", spec.name, query)
+            return str(error) or type(error).__name__
+        return None
