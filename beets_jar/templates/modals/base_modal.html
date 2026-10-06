@@ -1,11 +1,11 @@
 {#- Modals are swapped into #modal-root. They open themselves on arrival and remove
     themselves on close, so swapping an empty response into #modal-root also closes one. -#}
-<dialog id="modal" class="modal" x-data x-init="$el.showModal()" @close="$el.remove()"
+<dialog id="modal" class="card modal" x-data x-init="$el.showModal()" @close="$el.remove()"
 	aria-labelledby="modal-title">
-	<header class="modal-header">
+	<header class="card-header">
 		<strong 
 			id="modal-title" 
-			class="modal-title">
+			class="card-title">
 			{% block title %}{% endblock %}
 		</strong>
 		<form method="dialog">
@@ -13,7 +13,7 @@
 		</form>
 	</header>
 	{% block content %}
-	<div class="modal-body">{% block body %}{% endblock %}</div>
+	<div class="card-body">{% block body %}{% endblock %}</div>
 	<div class="modal-actions">{% block actions %}{% endblock %}</div>
 	{% endblock %}
 </dialog>

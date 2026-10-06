@@ -98,7 +98,7 @@ def _deleted_row(kind: Kind, album_or_item_id: int) -> HTMLResponse:
     """Empty main content (clears #modal-root, which closes the dialog) plus an
     out-of-band swap that turns the result row into a "Deleted" placeholder."""
     return HTMLResponse(
-        f'<li id="row-{kind}-{album_or_item_id}" class="result-row is-deleted" hx-swap-oob="true">'
+        f'<li id="row-{kind}-{album_or_item_id}" class="result-row row-card is-deleted" hx-swap-oob="true">'
         '<span class="result-main"><strong>Deleted</strong></span></li>'
     )
 

@@ -2,9 +2,9 @@
 <div hidden hx-get="/library/stats" hx-trigger="load" hx-target="#nav-stats"></div>
 
 {% for group in groups %}
-<div class="session-group">
-	<div class="session-head">
-		<h3 class="session-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
+<div class="panel-group">
+	<div class="panel-group-head">
+		<h3 class="panel-group-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
 		{% if group.dismissable %}
 		<button type="button" class="icon-button" title="Dismiss"
 			hx-delete="/import/sessions/{{ group.session.session_id }}" hx-swap="none">×</button>
@@ -13,9 +13,9 @@
 
 	{% for task in group.tasks %}
 	{% set tag = outcome_tag(task) %}
-	<div class="task-row">
+	<div class="task-row row-card">
 		<span class="task-name">{{ task_name(group.session, task) }}</span>
-		<span class="task-row-end">
+		<span class="row-actions">
 			<span class="tag tag-{{ tag.tone }}">{{ tag.text }}</span>
 			{% if can_restart(task) %}
 			<button type="button" class="icon-button" title="Try again"
@@ -27,7 +27,7 @@
 	{% endfor %}
 
 	{% if group.empty_note %}
-	<div class="task-row" {% if group.session.error %}title="{{ group.session.error }}"{% endif %}>
+	<div class="task-row row-card" {% if group.session.error %}title="{{ group.session.error }}"{% endif %}>
 		<span class="task-name">{{ group.empty_note }}</span>
 	</div>
 	{% endif %}

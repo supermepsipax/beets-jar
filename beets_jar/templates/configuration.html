@@ -5,10 +5,10 @@
 {% block content %}
 <div class="config-page">
 	{# is-loading hides the textarea until CodeMirror replaces it (config-editor.js) #}
-	<form id="config-form" class="work-card config-card is-loading"
+	<form id="config-form" class="card config-card is-loading"
 	      hx-post="/configuration" hx-target="#config-status" hx-swap="outerHTML">
-		<div class="import-card-header config-bar">
-			<strong class="import-card-title">config.yaml</strong>
+		<div class="card-header config-bar">
+			<strong class="card-title">config.yaml</strong>
 			<div class="config-actions">
 				{% include "configuration/status.html" %}
 				<button type="submit" class="button-secondary" disabled>Save</button>

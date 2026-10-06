@@ -1,12 +1,12 @@
 {% for group in groups %}
-<div class="session-group">
-	<h3 class="session-name">{{ group.name }}</h3>
+<div class="panel-group">
+	<h3 class="panel-group-name">{{ group.name }}</h3>
 
 	{% for row in group.rows %}
-	<div class="process-row"{% if row.error %} title="{{ row.error }}"{% endif %}>
+	<div class="process-row row-card"{% if row.error %} title="{{ row.error }}"{% endif %}>
 		<div class="process-head">
 			<span class="process-query" title="{{ row.subtitle }}">{{ row.subtitle }}</span>
-			<span class="task-row-end">
+			<span class="row-actions">
 				{% if row.can_cancel %}
 				<button type="button" class="icon-button" title="Stop"
 					hx-post="/library/processes/{{ row.process_id }}/cancel" hx-swap="none">■</button>

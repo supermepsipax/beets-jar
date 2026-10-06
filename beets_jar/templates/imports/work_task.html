@@ -1,10 +1,10 @@
 {#- One prompt in the import page's work area. The close button writes importPage()'s
     `auto` (imports.html). -#}
-<article class="work-card">
-	<header class="import-card-header">
+<article class="card">
+	<header class="card-header">
 		<div>
-			<strong class="import-card-title">{{ task_name(session, task) if task else session_name(session) }}</strong>
-			<span class="import-card-subtitle">
+			<strong class="card-title">{{ task_name(session, task) if task else session_name(session) }}</strong>
+			<span class="card-subtitle">
 				{{ session_name(session) }}{% if task %} · {{ task.summary.item_count }} item{{ "s" if task.summary.item_count != 1 }}{% endif %}
 			</span>
 		</div>
@@ -13,7 +13,7 @@
 			hx-get="/import/work/idle" hx-target="#work-area">×</button>
 	</header>
 
-	<div class="import-card-body">
+	<div class="card-body">
 		{% if note %}<p class="work-note">{{ note }}</p>{% endif %}
 		{% if error %}<p class="work-error">{{ error }}</p>{% endif %}
 

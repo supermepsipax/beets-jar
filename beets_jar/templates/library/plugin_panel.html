@@ -1,6 +1,6 @@
 {% from "macros/controls.html" import toggle %}
 {% if plugins %}
-<form id="plugin-form" class="plugin-list" @submit.prevent>
+<form id="plugin-form" @submit.prevent>
 	{% for plugin in plugins %}
 	{% set plugin_name = plugin.name %}
 	{% set storage_key = "jar:" ~ plugin_name %}

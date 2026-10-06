@@ -18,6 +18,15 @@
     --danger: #c92a2a;
 
     --radius: 6px;
+
+	/* Neo-brutalist building blocks: hard borders, offset shadows */
+	--line: 3px solid var(--border);
+	--line-dashed: 3px dashed var(--border);
+	--shadow-sm: 2px 2px 0 var(--border);
+	--shadow: 4px 4px 0 var(--border);
+	--shadow-lg: 6px 6px 0 var(--border);
+	--scrim: rgba(0, 0, 0, 0.3);
+	--panel-width: 22rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,22 +60,21 @@ body {
 }
 
 input[type="hidden"],
-[hidden] {
+[hidden],
+[x-cloak] {
 	display: none !important;
 }
 
 input,
 textarea,
 select {
-	display: inline-block;
 	padding: 10px 20px;
     color: var(--text);
     background: var(--bg);
-	text-decoration: none;
 	font-weight: bold;
-	border: 3px solid var(--border);
+	border: var(--line);
     border-radius: var(--radius);
-	box-shadow: 4px 4px 0 var(--border);
+	box-shadow: var(--shadow);
 }
 input:focus,
 textarea:focus,
@@ -74,7 +82,7 @@ select:focus {
 	outline: none;
 
 	border-color: var(--primary);
-	box-shadow: 6px 6px 0 var(--border);
+	box-shadow: var(--shadow-lg);
 	transform: translate(-1px, -1px);
 }
 /* }}} */
@@ -83,8 +91,7 @@ select:focus {
 a {
 	color: var(--text);
     background: var(--surface);
-	border: 0;
-	border-radius: var(--radius)
+	border-radius: var(--radius);
 }
 a:hover {
     background: var(--surface-hover);
@@ -96,9 +103,9 @@ button {
 	color: var(--on-primary);
 	text-decoration: none;
 	font-weight: bold;
-	border: 3px solid var(--border);
+	border: var(--line);
     border-radius: var(--radius);
-	box-shadow: 4px 4px 0 var(--border);
+	box-shadow: var(--shadow);
 	transition: all 0.2s ease;
 	cursor:pointer;
 }
@@ -133,9 +140,9 @@ input[type="checkbox"] {
 	margin: 0;
 	padding: 0;
 	background: var(--bg);
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: 4px;
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 	cursor: pointer;
 }
 input[type="checkbox"]:checked { background: var(--primary); }
@@ -154,7 +161,7 @@ input[type="checkbox"]:indeterminate::before {
 input[type="checkbox"]:focus {
 	transform: none;
 	border-color: var(--border);
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 }
 input[type="checkbox"]:focus-visible {
 	outline: 3px solid var(--primary);
@@ -172,18 +179,19 @@ input[type="checkbox"]:focus-visible {
 .button-sm {
 	padding: 4px 10px;
 	font-size: 0.85rem;
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 }
 
 .input-sm {
 	width: 8rem;
 	padding: 4px 8px;
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 }
 
 /* Text-only button, e.g. "Reset to config" */
 .link-button,
 .link-button:hover {
+	align-self: flex-start;
 	padding: 0;
 	background: none;
 	color: var(--primary);
@@ -199,14 +207,14 @@ input[type="checkbox"]:focus-visible {
 	overflow: hidden;
 	background: var(--bg);
 	font-weight: bold;
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
-	box-shadow: 4px 4px 0 var(--border);
+	box-shadow: var(--shadow);
 	cursor: pointer;
 	user-select: none;
 	transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
-.toggle:hover  { box-shadow: 2px 2px 0 var(--border); }
+.toggle:hover  { box-shadow: var(--shadow-sm); }
 .toggle:active { transform: translate(1px, 1px); box-shadow: none; }
 .toggle:has(input:focus-visible) {
 	outline: 3px solid var(--primary);
@@ -234,7 +242,7 @@ input[type="checkbox"]:focus-visible {
 	white-space: nowrap;
 	transition: background 0.15s ease, color 0.15s ease;
 }
-.toggle-seg + .toggle-seg { border-left: 3px solid var(--border); }
+.toggle-seg + .toggle-seg { border-left: var(--line); }
 
 .toggle input:checked ~ .toggle-on,
 .toggle input:not(:checked) ~ .toggle-off,
@@ -244,27 +252,18 @@ input[type="checkbox"]:focus-visible {
 }
 .segmented .toggle-seg { cursor: pointer; }
 
-.toggle-sm { box-shadow: 2px 2px 0 var(--border); }
+.toggle-sm { box-shadow: var(--shadow-sm); }
 .toggle-sm .toggle-seg { padding: 2px 8px; font-size: 0.8rem; }
-/* }}} */
 
-/*{{{ ---------- Modal ---------- */
-.modal {
-	width: min(92vw, 32rem);
-	max-height: 90vh;
-	padding: 0;
-	overflow: auto;
-	color: var(--text);
+/* A boxed panel with a coloured title bar: work-area prompts, modals, the config editor */
+.card {
 	background: var(--surface);
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
-	box-shadow: 6px 6px 0 var(--border);
+	box-shadow: var(--shadow-lg);
+	overflow: hidden;
 }
-.modal::backdrop { background: rgba(0, 0, 0, 0.3); }
-
-.modal-header {
-	position: sticky;
-	top: 0;
+.card-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -272,13 +271,70 @@ input[type="checkbox"]:focus-visible {
 	padding: 12px 16px;
 	background: var(--primary);
 	color: var(--on-primary);
-	border-bottom: 3px solid var(--border);
+	border-bottom: var(--line);
 }
-.modal-header form { margin: 0; }
-.modal-title { font-size: 1rem; }
+.card-header form { margin: 0; }
+.card-title {
+	display: block;
+	font-size: 1rem;
+}
+.card-subtitle {
+	display: block;
+	margin-top: 2px;
+	font-size: 0.8rem;
+	opacity: 0.8;
+}
+.card-body { padding: 20px; }
+.card-body > :last-child { margin-bottom: 0; }
 
-.modal-body { padding: 20px; }
-.modal-body > :last-child { margin-bottom: 0; }
+/* One entry in a list: a library result, a process, an import task */
+.row-card {
+	margin: 0 0 10px;
+	padding: 10px 14px;
+	background: var(--bg);
+	border: var(--line);
+	border-radius: var(--radius);
+}
+/* Small buttons/tags at the end of a row */
+.row-actions {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: 8px;
+}
+
+/* A boxed number with a small label under it: nav counts, candidate match % */
+.stat-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 4px 12px;
+	font-weight: bold;
+	background: var(--surface);
+	border: var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+.stat-number {
+	font-size: 1.2rem;
+	font-weight: bolder;
+}
+/* }}} */
+
+/*{{{ ---------- Modal ---------- */
+/* <dialog class="card modal"> */
+.modal {
+	width: min(92vw, 32rem);
+	max-height: 90vh;
+	padding: 0;
+	overflow: auto;
+	color: var(--text);
+}
+.modal::backdrop { background: var(--scrim); }
+.modal .card-header {
+	position: sticky;
+	top: 0;
+}
 
 .modal-actions {
 	display: flex;
@@ -309,12 +365,12 @@ input[type="checkbox"]:focus-visible {
 	font-size: 0.85rem;
 	color: var(--text-muted);
 }
-.modal-body .work-error { margin: 16px 0 0; }
+.modal .work-error { margin: 16px 0 0; }
 /* }}} */
 
 /*{{{--------- Navigation Bar ---------- */
 nav {
-    border-bottom: 3px dashed var(--border);
+    border-bottom: var(--line-dashed);
 	border-radius: var(--radius);
 	background: var(--surface);
 	display: grid;
@@ -342,16 +398,12 @@ nav {
 	text-decoration: underline 3px var(--primary);
 }
 
-nav .library-stats {
+.nav-stats {
+	display: flex;
 	justify-self: end;
 	gap: 16px;
 	padding: 0 6px 6px 0;
 }
-nav .library-stat-block {
-	padding: 4px 12px;
-	box-shadow: 4px 4px 0 var(--border);
-}
-nav .library-stat-number { font-size: 1.2rem; }
 
 @media (max-width: 600px) {
 	nav {
@@ -388,7 +440,7 @@ nav .library-stat-number { font-size: 1.2rem; }
    panels become drawers that slide in from the edges. */
 .split-layout {
 	display: grid;
-	grid-template-columns: minmax(240px, 22rem) minmax(0, 1fr) minmax(240px, 22rem);
+	grid-template-columns: minmax(240px, var(--panel-width)) minmax(0, 1fr) minmax(240px, var(--panel-width));
 	min-height: calc(100vh - 120px); /* roughly the nav height; adjust to taste */
 }
 
@@ -396,8 +448,8 @@ nav .library-stat-number { font-size: 1.2rem; }
 	padding: 16px;
 	overflow-y: auto;
 }
-.drawer-left  { border-right: 3px dashed var(--border); }
-.drawer-right { border-left: 3px dashed var(--border); }
+.drawer-left  { border-right: var(--line-dashed); }
+.drawer-right { border-left: var(--line-dashed); }
 
 #work-area {
 	padding: 24px;
@@ -423,6 +475,15 @@ nav .library-stat-number { font-size: 1.2rem; }
 	font-weight: bold;
 }
 
+/* The work area's resting state (search box, import form) */
+.work-idle {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+	max-width: 44rem;
+	margin: 0 auto;
+}
+
 .drawer-toolbar,
 .drawer-backdrop {
 	display: none; /* mobile only, see media query */
@@ -446,7 +507,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 		position: fixed;
 		inset: 0;
 		z-index: 9;
-		background: rgba(0, 0, 0, 0.3);
+		background: var(--scrim);
 	}
 
 	.side-panel {
@@ -454,7 +515,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 		top: 0;
 		bottom: 0;
 		z-index: 10;
-		width: min(85vw, 22rem);
+		width: min(85vw, var(--panel-width));
 		box-sizing: border-box;
 		background: var(--bg);
 		transition: transform 0.2s ease;
@@ -471,7 +532,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 	}
 	.side-panel.is-open {
 		transform: none;
-		box-shadow: 6px 6px 0 var(--border);
+		box-shadow: var(--shadow-lg);
 	}
 
 	#work-area { padding: 16px; }
@@ -492,36 +553,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 /* }}} */
 
 /* {{{ --------- Library Page --------- */
-.library-work-idle {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 24px;
-	max-width: 44rem;
-	margin: 0 auto;
-}
-
-.library-stats {
-	display: flex;
-	gap: 20px;
-	padding: 10px;
-}
-.library-stat-block {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	padding: 10px;
-	font-weight: bold;
-	background: var(--surface);
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
-	box-shadow: 6px 6px 0 var(--border);
-}
-.library-stat-number {
-	font-size: 1.5rem;
-	font-weight: bolder;
-}
-
 .library-query,
 .library-results {
 	width: 100%;
@@ -564,11 +595,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 	display: flex;
 	align-items: center;
 	gap: 14px;
-	margin-bottom: 10px;
-	padding: 10px 14px;
-	background: var(--bg);
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
 }
 .result-row:has(input[name="ids"]:checked) { background: var(--surface); }
 .result-row.is-deleted {
@@ -597,20 +623,15 @@ nav .library-stat-number { font-size: 1.2rem; }
 	font-weight: bold;
 	color: var(--text-muted);
 }
-.result-actions {
-	display: flex;
-	flex-shrink: 0;
-	gap: 8px;
-}
 .help-dot {
 	display: inline-grid;
 	place-content: center;
 	width: 1.8rem;
 	height: 1.8rem;
 	font-size: 1rem;
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: 50%;
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 	cursor: help;
 }
 
@@ -661,7 +682,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 	margin-top: 8px;
 	padding: 12px;
 	background: var(--surface);
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
 }
 .plugin-options {
@@ -677,16 +698,8 @@ nav .library-stat-number { font-size: 1.2rem; }
 	font-weight: bold;
 	text-transform: capitalize;
 }
-.link-button { align-self: flex-start; }
 
-.process-row {
-	margin: 0 0 10px;
-	padding: 10px 14px;
-	background: var(--bg);
-	font-weight: bold;
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
-}
+.process-row { font-weight: bold; }
 .process-head {
 	display: flex;
 	align-items: center;
@@ -713,7 +726,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 	height: 12px;
 	overflow: hidden;
 	background: var(--bg);
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
 }
 .progress > span {
@@ -721,8 +734,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 	height: 100%;
 	background: var(--success);
 }
-
-.tag-active { background: var(--primary); color: var(--on-primary); }
 
 @media (max-width: 600px) {
 	.result-year { display: none; }
@@ -735,19 +746,18 @@ nav .library-stat-number { font-size: 1.2rem; }
 /* }}} */
 
 /* {{{--------- Import Page --------- */
-[x-cloak] { display: none !important; }
-
 /* ---------- Side panel rows ---------- */
-.session-group { margin-bottom: 20px; }
+/* A titled group of rows in a side panel: an import session, a plugin's processes */
+.panel-group { margin-bottom: 20px; }
 
-.session-head {
+.panel-group-head {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 8px;
 }
 
-.session-name {
+.panel-group-name {
 	margin: 0 0 8px;
 	font-size: 1rem;
 	white-space: nowrap;
@@ -755,6 +765,7 @@ nav .library-stat-number { font-size: 1.2rem; }
 	text-overflow: ellipsis;
 }
 
+/* div, or a button when the task needs the user */
 .task-row {
 	display: flex;
 	align-items: center;
@@ -762,15 +773,10 @@ nav .library-stat-number { font-size: 1.2rem; }
 	gap: 10px;
 	width: 100%;
 	box-sizing: border-box;
-	margin: 0 0 10px;
-	padding: 10px 14px;
-	background: var(--bg);
 	color: var(--text);
 	font: inherit;
 	font-weight: bold;
 	text-align: left;
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
 }
 
 .task-name {
@@ -780,28 +786,21 @@ nav .library-stat-number { font-size: 1.2rem; }
 	text-overflow: ellipsis;
 }
 
-.task-row .label {
+.task-row-label {
 	flex-shrink: 0;
 	font-size: 0.75rem;
 	text-transform: uppercase;
 	color: var(--text-muted);
 }
 
-.task-row-end {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	flex-shrink: 0;
-}
-
-button.task-row.needs-you {
+.task-row.needs-you {
 	background: var(--primary);
 	color: var(--on-primary);
 	border-color: var(--border);
-	box-shadow: 4px 4px 0 var(--border);
+	box-shadow: var(--shadow);
 }
-button.task-row.needs-you .label { color: inherit; }
-button.task-row.needs-you:hover {
+.task-row.needs-you .task-row-label { color: inherit; }
+.task-row.needs-you:hover {
 	background: var(--bg);
 	color: var(--primary);
 	border-color: var(--primary);
@@ -819,11 +818,12 @@ button.task-row.needs-you:hover {
 .tag-success { background: var(--success); color: var(--on-primary); }
 .tag-muted   { background: var(--surface-hover); color: var(--text-muted); }
 .tag-danger  { background: var(--danger); color: var(--on-primary); }
+.tag-active  { background: var(--primary); color: var(--on-primary); }
 
 .icon-button {
 	padding: 2px 10px;
 	font-size: 1rem;
-	box-shadow: 2px 2px 0 var(--border);
+	box-shadow: var(--shadow-sm);
 }
 
 /* ---------- Button variants (work area) ---------- */
@@ -846,40 +846,10 @@ button.task-row.needs-you:hover {
 }
 
 /* ---------- Work area ---------- */
-.work-card {
-	background: var(--surface);
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
-	box-shadow: 6px 6px 0 var(--border);
-	overflow: hidden;
-}
-
-.import-card-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
-	padding: 12px 16px;
-	background: var(--primary);
-	color: var(--on-primary);
-	border-bottom: 3px solid var(--border);
-}
-.import-card-title {
-	display: block;
-	font-size: 1rem;
-}
-.import-card-subtitle {
-	display: block;
-	margin-top: 2px;
-	font-size: 0.8rem;
-	opacity: 0.8;
-}
+/* The close (×) button in a card header */
 .header-action {
 	padding: 4px 10px;
 	font-size: 1.2rem;
-}
-.import-card-body {
-	padding: 20px;
 }
 
 /* Manual search / MBID rows (also used by the server-path form) */
@@ -889,9 +859,11 @@ button.task-row.needs-you:hover {
 	gap: 16px;
 	margin-top: 20px;
 	padding-top: 20px;
-	border-top: 3px solid var(--border);
+	border-top: var(--line);
 }
-.manual-action label {
+.manual-action label,
+.path-form label,
+.quick-import label {
 	display: block;
 	margin-bottom: 6px;
 	font-weight: bold;
@@ -917,28 +889,20 @@ button.task-row.needs-you:hover {
 	margin-bottom: 20px;
 }
 .work-actions form { margin: 0; }
-.work-actions-end { margin-left: auto !important; }
+.work-actions-end { margin-left: auto; }
 
 .work-note,
 .work-error {
 	margin: 0 0 16px;
 	padding: 8px 12px;
 	font-weight: bold;
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
 }
 .work-note  { background: var(--bg); }
 .work-error { background: var(--danger); color: var(--on-primary); }
 
 /* ---------- Idle view ---------- */
-.work-idle {
-	display: flex;
-	flex-direction: column;
-	gap: 24px;
-	max-width: 44rem;
-	margin: 0 auto;
-}
-
 .work-pending { align-self: flex-start; }
 
 .drop-zone {
@@ -949,18 +913,11 @@ button.task-row.needs-you:hover {
 	padding: 72px 24px;
 	text-align: center;
 	background: var(--surface);
-	border: 3px dashed var(--border);
+	border: var(--line-dashed);
 	border-radius: var(--radius);
 }
 .drop-zone strong { font-size: 1.3rem; }
 .drop-zone span   { color: var(--text-muted); font-size: 0.85rem; }
-
-.path-form label,
-.quick-import label {
-	display: block;
-	margin-bottom: 6px;
-	font-weight: bold;
-}
 
 /* ---------- Waiting view ---------- */
 .work-waiting-text {
@@ -1012,7 +969,7 @@ button.task-row.needs-you:hover {
 }
 .candidate-row.is-selected {
 	border-color: var(--primary);
-	box-shadow: 4px 4px 0 var(--border);
+	box-shadow: var(--shadow);
 }
 
 .candidate-pct {
@@ -1043,7 +1000,7 @@ button.task-row.needs-you:hover {
 	box-sizing: border-box;
 	padding: 16px;
 	background: var(--bg);
-	border: 3px solid var(--border);
+	border: var(--line);
 	border-radius: var(--radius);
 }
 .candidate-detail > * { flex-shrink: 0; }
@@ -1060,20 +1017,13 @@ button.task-row.needs-you:hover {
 .candidate-detail-meta   { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted); }
 .candidate-detail-note   { margin: 12px 0 0; font-weight: bold; color: var(--danger); }
 
-/* Same block treatment as .library-stat-block */
+/* .stat-block, a little roomier, with a bigger number */
 .match-pct {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
 	flex-shrink: 0;
 	padding: 8px 12px;
-	background: var(--surface);
-	border: 3px solid var(--border);
-	border-radius: var(--radius);
-	box-shadow: 4px 4px 0 var(--border);
 	font-size: 0.75rem;
-	font-weight: bold;
 }
+.match-pct .stat-number { font-size: 1.5rem; }
 
 .track-list {
 	/* Fill whatever height is left between the header and Apply, then scroll */
@@ -1083,8 +1033,8 @@ button.task-row.needs-you:hover {
 	margin: 0;
 	padding: 0 8px 0 0;
 	list-style: none;
-	border-top: 3px solid var(--border);
-	border-bottom: 3px solid var(--border);
+	border-top: var(--line);
+	border-bottom: var(--line);
 	scrollbar-color: var(--border) transparent;
 }
 .track-list li {

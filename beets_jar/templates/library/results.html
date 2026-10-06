@@ -4,7 +4,7 @@
 <p class="panel-empty">Nothing matches that query.</p>
 {% elif rows %}
 {% set row_ids_json = rows | map(attribute="id") | map("string") | list | tojson %}
-<div class="results" x-data='{
+<div x-data='{
 	allIds: {{ row_ids_json }},
 	selectedIds: {{ row_ids_json }},
 	get allSelected() { return this.selectedIds.length === this.allIds.length },
@@ -35,7 +35,7 @@
 
 	<ul class="result-list">
 		{% for row in rows %}
-		<li class="result-row" id="row-{{ kind }}-{{ row.id }}">
+		<li class="result-row row-card" id="row-{{ kind }}-{{ row.id }}">
 			<input type="checkbox" name="ids" value="{{ row.id }}" form="results-form"
 				x-model="selectedIds" aria-label="Select {{ row.title }}">
 			<span class="result-main">
@@ -43,7 +43,7 @@
 				{% if row.subtitle %}<span>{{ row.subtitle }}</span>{% endif %}
 			</span>
 			<span class="result-year">{{ row.year or "" }}</span>
-			<span class="result-actions">
+			<span class="row-actions">
 				<button type="button" class="button-secondary button-sm" disabled title="Coming soon">Edit</button>
 				<button type="button" class="button-danger button-sm"
 					hx-get="/library/modal/delete?kind={{ kind }}&album_or_item_id={{ row.id }}"

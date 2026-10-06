@@ -13,7 +13,7 @@
 
 {% block content %}
 <form hx-delete="/import/sessions" hx-target="#modal-root" hx-swap="innerHTML">
-	<div class="modal-body">
+	<div class="card-body">
 		{% if count %}
 		<p class="modal-subject">
 			<strong>{{ count }} finished import{{ "s" if count != 1 }}</strong>

@@ -1,12 +1,12 @@
-<article class="work-card work-waiting"
+<article class="card"
 	hx-get="{{ poll_url }}" hx-trigger="every 1s" hx-target="#work-area">
-	<header class="import-card-header">
+	<header class="card-header">
 		<div>
-			<strong class="import-card-title">{{ task_name(session, task) if task else session_name(session) }}</strong>
-			<span class="import-card-subtitle">{{ session_name(session) }}</span>
+			<strong class="card-title">{{ task_name(session, task) if task else session_name(session) }}</strong>
+			<span class="card-subtitle">{{ session_name(session) }}</span>
 		</div>
 	</header>
-	<div class="import-card-body">
+	<div class="card-body">
 		<p class="work-waiting-text">{{ message }}</p>
 	</div>
 </article>

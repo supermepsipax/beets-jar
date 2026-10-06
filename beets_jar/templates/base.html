@@ -35,7 +35,7 @@
 
 <body>
 	{% block nav %}
-	<nav class="nav-bar">
+	<nav>
 		<div class="header-logo">
 			<img src="/static/beets-jar-transparent.png">
 			<a href="/library">
@@ -47,7 +47,7 @@
 			<a href="/import" class="nav-link"{% if request.url.path.startswith('/import') %} aria-current="page"{% endif %}>Import</a>
 			<a href="/configuration" class="nav-link"{% if request.url.path.startswith('/configuration') %} aria-current="page"{% endif %}>Configuration</a>
 		</div>
-		<div id="nav-stats" class="library-stats" hx-get="/library/stats" hx-trigger="load"></div>
+		<div id="nav-stats" class="nav-stats" hx-get="/library/stats" hx-trigger="load"></div>
 	</nav>
 	{% endblock %}
 
