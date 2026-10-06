@@ -3,25 +3,23 @@
 {% block title %}Import - Beets-Jar{% endblock %}
 
 {% block content %}
-{% from "macros/controls.html" import toggle %}
+{% from "macros/controls.html" import toggle, drawer_toolbar %}
 <script>
 	// Page state for the import layout: mobile drawers + auto mode.
 	// Auto mode pulls the next prompt into the work area whenever it is idle and
 	// something needs the user. It never replaces a prompt (or "Searching…")
 	// that is already showing, so the server's follow-up order is untouched.
+	// Partials that rely on this: imports/work_idle.html (reads `auto`, marks
+	// data-work="idle"), imports/work_task.html (sets `auto`), and
+	// imports/in_progress_panel.html (its .needs-you rows).
 	function importPage() {
 		return {
-			left: false,
-			right: false,
-			auto: false,
+			openDrawer: null,  // "left" | "right" | null, see drawer_toolbar
+			auto: Alpine.$persist(false).as("import-auto"),
 			loading: false,
 
 			init() {
-				try { this.auto = localStorage.getItem("import-auto") === "1"; } catch {}
-				this.$watch("auto", (on) => {
-					try { localStorage.setItem("import-auto", on ? "1" : "0"); } catch {}
-					this.pull();
-				});
+				this.$watch("auto", () => this.pull());
 				// Runs after every in-progress panel update from the stream
 				new MutationObserver(() => this.pull())
 					.observe(document.getElementById("in-progress-rows"), { childList: true, subtree: true });
@@ -40,21 +38,12 @@
 	}
 </script>
 
-<div class="import-layout" x-data="importPage()" @keydown.escape.window="left = false; right = false">
+<div class="split-layout" x-data="importPage()" @keydown.escape.window="openDrawer = null">
+	{{ drawer_toolbar("☰ In progress", "Finished") }}
 
-	{# Mobile only (hidden by CSS on desktop) #}
-	<div class="import-toolbar">
-		<button type="button" class="drawer-toggle drawer-toggle-left" @click="left = !left; right = false">
-			☰ In progress
-		</button>
-		<button type="button" class="drawer-toggle drawer-toggle-right" @click="right = !right; left = false">
-			Finished
-		</button>
-	</div>
-	<div class="drawer-backdrop" x-show="left || right" x-cloak @click="left = false; right = false"></div>
-
-	<aside id="in-progress" class="import-panel drawer" :class="{ 'is-open': left }"
-		@click="if ($event.target.closest('.needs-you')) left = false">
+	{# Picking a prompt on mobile closes the drawer so the work area shows #}
+	<aside id="in-progress" class="side-panel drawer-left" :class="{ 'is-open': openDrawer === 'left' }"
+		@click="if ($event.target.closest('.needs-you')) openDrawer = null">
 		<div class="panel-head">
 			<h2 class="panel-title">In Progress</h2>
 			{{ toggle("auto", on="Auto", off="Manual", label="Show prompts automatically", attrs='x-model="auto"', cls="toggle-sm") }}
@@ -64,7 +53,7 @@
 
 	<section id="work-area" hx-get="{{ work_url }}" hx-trigger="load"></section>
 
-	<aside id="finished" class="import-panel drawer" :class="{ 'is-open': right }">
+	<aside id="finished" class="side-panel drawer-right" :class="{ 'is-open': openDrawer === 'right' }">
 		<div class="panel-head">
 			<h2 class="panel-title">Finished</h2>
 			<button type="button" class="button-secondary button-sm" title="Clear all finished imports"

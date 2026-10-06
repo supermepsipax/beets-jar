@@ -1,4 +1,4 @@
-
+{% from "macros/controls.html" import choice_button %}
 <div class="candidate-detail">
 	<div class="candidate-detail-head">
 		<div>
@@ -28,9 +28,5 @@
 
 	{% if candidate.notes %}<p class="candidate-detail-note">{{ candidate.notes }}</p>{% endif %}
 
-	<form hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="choice_type" value="candidate">
-		<input type="hidden" name="value" value="{{ candidate.index }}">
-		<button type="submit" class="button-block">Apply</button>
-	</form>
+	{{ choice_button(choose_url, candidate.index, "Apply", cls="button-block", choice_type="candidate") }}
 </div>

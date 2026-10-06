@@ -82,16 +82,15 @@ async def query_results(
 def _delete_modal(
     request: Request, kind: Kind, album_or_item: Album | Item, error: str | None = None
 ):
-    is_album = isinstance(album_or_item, Album)
+    row = result_row(album_or_item)
+    details = [row.subtitle] if row.subtitle else []
+    if isinstance(album_or_item, Album):
+        track_count = len(album_or_item.items())
+        details.append(f"{track_count} track{'s' if track_count != 1 else ''}")
     return templates.TemplateResponse(
         request,
         "modals/library_delete_modal.html",
-        {
-            "kind": kind,
-            "row": result_row(album_or_item),
-            "track_count": len(album_or_item.items()) if is_album else None,
-            "error": error,
-        },
+        {"kind": kind, "row": row, "details": " · ".join(details), "error": error},
     )
 
 

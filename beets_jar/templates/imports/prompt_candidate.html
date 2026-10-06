@@ -1,10 +1,7 @@
+{% from "macros/controls.html" import choice_button %}
 <div class="work-actions">
 	{% for choice in prompt.choices if choice.short not in ["e", "i", "b"] %}
-	<form hx-post="{{ choose_url }}" hx-target="#work-area">
-		<input type="hidden" name="choice_type" value="action">
-		<input type="hidden" name="value" value="{{ choice.short }}">
-		<button type="submit" class="button-secondary">{{ choice_label(choice) }}</button>
-	</form>
+	{{ choice_button(choose_url, choice.short, choice_label(choice)) }}
 	{% endfor %}
 
 	{% for choice in prompt.choices if choice.short == "b" %}
@@ -15,13 +12,13 @@
 </div>
 
 {% if candidates %}
-<div class="candidate-split" x-data="{ sel: 1 }">
+<div class="candidate-split" x-data="{ selectedIndex: 1 }">
 	<ol class="candidate-list">
 		{% for candidate in candidates %}
 		<li>
 			<button type="button" class="candidate-row"
-				:class="{ 'is-selected': sel === {{ candidate.index }} }"
-				@click="sel = {{ candidate.index }}"
+				:class="{ 'is-selected': selectedIndex === {{ candidate.index }} }"
+				@click="selectedIndex = {{ candidate.index }}"
 				hx-get="/import/work/{{ session.session_id }}/prompts/{{ prompt.prompt_id }}/candidates/{{ candidate.index }}"
 				hx-target="#candidate-detail">
 				<span class="candidate-pct">{{ candidate.pct }}%</span>

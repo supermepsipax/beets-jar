@@ -6,14 +6,30 @@
 </label>
 {% endmacro %}
 
-{% macro segmented(name, options, selected=none, label=none, attrs="", cls="") -%}
-<div class="toggle segmented {{ cls }}" role="radiogroup"{% if label %} aria-label="{{ label }}"{% endif %}>
-	{%- for option in options %}
-	{%- if option is string %}{% set value, text = option, option %}{% else %}{% set value, text = option %}{% endif %}
-	<label class="toggle-seg">
-		<input type="radio" name="{{ name }}" value="{{ value }}"{% if value == selected %} checked{% endif %} {{ attrs | safe }}>
-		{{ text }}
-	</label>
-	{%- endfor %}
+{#- One button that answers an import prompt. The form posts to the prompt's
+    choose_url, and the reply (the next work view) replaces #work-area. -#}
+{% macro choice_button(choose_url, value, label, cls="button-secondary", choice_type="action") %}
+<form hx-post="{{ choose_url }}" hx-target="#work-area">
+	<input type="hidden" name="choice_type" value="{{ choice_type }}">
+	<input type="hidden" name="value" value="{{ value }}">
+	<button type="submit"{% if cls %} class="{{ cls }}"{% endif %}>{{ label }}</button>
+</form>
+{% endmacro %}
+
+{#- Closes the modal it sits in (see modals/base_modal.html) -#}
+{% macro cancel_button(label="Cancel") %}
+<button type="button" class="button-secondary" commandfor="modal" command="close">{{ label }}</button>
+{% endmacro %}
+
+{#- Mobile only (hidden by CSS on desktop): buttons that slide the page's side
+    panels in, and a backdrop that closes them. The page's x-data needs
+    `openDrawer` ("left", "right" or null). -#}
+{% macro drawer_toolbar(left_label, right_label) %}
+<div class="drawer-toolbar">
+	<button type="button" class="drawer-toggle drawer-toggle-left"
+		@click="openDrawer = openDrawer === 'left' ? null : 'left'">{{ left_label }}</button>
+	<button type="button" class="drawer-toggle drawer-toggle-right"
+		@click="openDrawer = openDrawer === 'right' ? null : 'right'">{{ right_label }}</button>
 </div>
-{%- endmacro %}
+<div class="drawer-backdrop" x-show="openDrawer" x-cloak @click="openDrawer = null"></div>
+{% endmacro %}

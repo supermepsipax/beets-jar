@@ -9,6 +9,7 @@
     once the request is done.
 -#}
 {% extends "modals/base_modal.html" %}
+{% from "macros/controls.html" import cancel_button %}
 
 {% block title %}Stop this import?{% endblock %}
 
@@ -26,7 +27,7 @@
 	</div>
 
 	<div class="modal-actions">
-		<button type="button" class="button-secondary" @click="$el.closest('dialog').close()">Cancel</button>
+		{{ cancel_button() }}
 		<button type="submit" class="button-danger">Stop import</button>
 	</div>
 </form>

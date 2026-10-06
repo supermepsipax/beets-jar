@@ -1,9 +1,9 @@
 {#- Confirm deleting an album or track from the library results.
     Context:
-      kind        : "album" | "item"
-      row         : ResultRow for the thing being deleted
-      track_count : int | None (albums only)
-      error       : str | None (set when a delete attempt failed)
+      kind    : "album" | "item"
+      row     : ResultRow for the thing being deleted
+      details : str, e.g. "Artist · 12 tracks" (may be empty)
+      error   : str | None (set when a delete attempt failed)
 
     The form swaps its response into #modal-root:
       success -> empty body (the dialog is removed, i.e. closed) plus an
@@ -11,12 +11,12 @@
       failure -> this modal again, with `error` shown
 -#}
 {% extends "modals/base_modal.html" %}
-{% from "macros/controls.html" import toggle %}
+{% from "macros/controls.html" import toggle, cancel_button %}
 
 {% block title %}Delete {{ "album" if kind == "album" else "track" }}{% endblock %}
 
 {% block content %}
-<form x-data="{ disk: false }"
+<form x-data="{ deleteFiles: false }"
 	hx-delete="/library/rows/{{ kind }}/{{ row.id }}"
 	hx-target="#modal-root"
 	hx-swap="innerHTML">
@@ -24,16 +24,14 @@
 	<div class="modal-body">
 		<p class="modal-subject">
 			<strong>{{ row.title }}</strong>
-			{% if row.subtitle or track_count %}
-			<span>{{ row.subtitle }}{% if row.subtitle and track_count %} · {% endif %}{% if track_count %}{{ track_count }} track{% if track_count != 1 %}s{% endif %}{% endif %}</span>
-			{% endif %}
+			{% if details %}<span>{{ details }}</span>{% endif %}
 		</p>
 
 		<div class="modal-field">
 			<span>Remove from</span>
-			{{ toggle("delete_files", on="Disk + DB", off="DB only", label="Also delete files from disk", attrs='x-model="disk"') }}
+			{{ toggle("delete_files", on="Disk + DB", off="DB only", label="Also delete files from disk", attrs='x-model="deleteFiles"') }}
 		</div>
-		<p class="modal-hint" x-text="disk ? 'The files are deleted from disk too.' : 'The files stay on disk.'">
+		<p class="modal-hint" x-text="deleteFiles ? 'The files are deleted from disk too.' : 'The files stay on disk.'">
 			The files stay on disk.
 		</p>
 
@@ -41,7 +39,7 @@
 	</div>
 
 	<div class="modal-actions">
-		<button type="button" class="button-secondary" @click="$el.closest('dialog').close()">Cancel</button>
+		{{ cancel_button() }}
 		<button type="submit" class="button-danger">Delete</button>
 	</div>
 </form>

@@ -1,3 +1,6 @@
+{#- The import page's work area when no prompt is showing.
+    Uses importPage() from imports.html: `auto` hides the "waiting" button, and
+    data-work="idle" tells pull() that the work area is free for the next prompt. -#}
 <div class="work-idle" data-work="idle">
 	{% if pending %}
 	<button type="button" class="work-pending" x-show="!auto" hx-get="/import/work" hx-target="#work-area">

@@ -1,58 +1,68 @@
-{% from "macros/controls.html" import toggle, segmented %}
+{% from "macros/controls.html" import toggle %}
 {% if plugins %}
 <form id="plugin-form" class="plugin-list" @submit.prevent>
 	{% for plugin in plugins %}
-	{% set defaults = plugin.ui_defaults %}
-	{% set hash = plugin.defaults_hash %}
-	{% set name = plugin.name %}
-	{% set names = plugin.commands | map(attribute="name") | list %}
-	{% set with_options = plugin.commands | selectattr("options") | map(attribute="name") | list %}
+	{% set plugin_name = plugin.name %}
+	{% set storage_key = "jar:" ~ plugin_name %}
+	{% set defaults_json = plugin.ui_defaults | tojson %}
+	{% set command_names = plugin.commands | map(attribute="name") | list %}
+	{% set commands_with_options = plugin.commands | selectattr("options") | map(attribute="name") | list %}
 	<div class="plugin-card" x-data='{
-		on: $persist(false).as("jar:{{ name }}:on"),
-		open: $persist(false).as("jar:{{ name }}:open"),
-		command: $persist({{ names[0] | tojson }}).as("jar:{{ name }}:command"),
-		opts: $persist({{ defaults | tojson }}).as("jar:{{ name }}:opts:{{ hash }}")
+		enabled: $persist(false).as("{{ storage_key }}:on"),
+		settingsOpen: $persist(false).as("{{ storage_key }}:open"),
+		selectedCommand: $persist({{ command_names[0] | tojson }}).as("{{ storage_key }}:command"),
+		optionValues: $persist({{ defaults_json }}).as("{{ storage_key }}:opts:{{ plugin.defaults_hash }}"),
+		commandsWithOptions: {{ commands_with_options | tojson }},
+		get hasOptions() { return this.commandsWithOptions.includes(this.selectedCommand) },
+		resetOptions() { this.optionValues = {{ defaults_json }} },
 	}'>
 
 		<div class="plugin-head">
-			<h3 class="plugin-name">{{ name }}</h3>
-			{{ toggle("plugins", value=name, label="Use " ~ name, attrs='x-model="on"', cls="toggle-sm") }}
+			<h3 class="plugin-name">{{ plugin_name }}</h3>
+			{{ toggle("plugins", value=plugin_name, label="Use " ~ plugin_name, attrs='x-model="enabled"', cls="toggle-sm") }}
 		</div>
 
-		{% if names | length > 1 %}
-		{{ segmented(name ~ ".command", names, selected=names[0], label=name ~ " command",
-			attrs='x-model="command"', cls="toggle-sm plugin-commands") }}
+		{% if command_names | length > 1 %}
+		<div class="toggle segmented toggle-sm plugin-commands" role="radiogroup" aria-label="{{ plugin_name }} command">
+			{% for command_name in command_names %}
+			<label class="toggle-seg">
+				<input type="radio" name="{{ plugin_name }}.command" value="{{ command_name }}"
+					x-model="selectedCommand"{% if loop.first %} checked{% endif %}>
+				{{ command_name }}
+			</label>
+			{% endfor %}
+		</div>
 		{% else %}
-		<input type="hidden" name="{{ name }}.command" value="{{ names[0] }}">
+		<input type="hidden" name="{{ plugin_name }}.command" value="{{ command_names[0] }}">
 		{% endif %}
 
-		{% if with_options %}
-		<button type="button" class="settings-bar" x-show='{{ with_options | tojson }}.includes(command)'
-			@click="open = !open" :aria-expanded="open">
+		{% if commands_with_options %}
+		<button type="button" class="settings-bar" x-show="hasOptions"
+			@click="settingsOpen = !settingsOpen" :aria-expanded="settingsOpen">
 			<span>Settings</span>
-			<span x-text="open ? '↓' : '>'"></span>
+			<span x-text="settingsOpen ? '↓' : '>'"></span>
 		</button>
 
-		<div class="plugin-settings" x-show='open && {{ with_options | tojson }}.includes(command)' x-cloak>
-			{% for cmd in plugin.commands if cmd.options %}
-			<div class="plugin-options" x-show="command === '{{ cmd.name }}'">
-				{% for option in cmd.options %}
-				{% set field = name ~ "." ~ cmd.name ~ "." ~ option.dest %}
-				{% set model = "opts." ~ cmd.name ~ "." ~ option.dest %}
+		<div class="plugin-settings" x-show="settingsOpen && hasOptions" x-cloak>
+			{% for command in plugin.commands if command.options %}
+			<div class="plugin-options" x-show='selectedCommand === {{ command.name | tojson }}'>
+				{% for option in command.options %}
+				{% set input_name = plugin_name ~ "." ~ command.name ~ "." ~ option.dest %}
+				{% set alpine_path = "optionValues." ~ command.name ~ "." ~ option.dest %}
+				{% set is_number = option.type in ("int", "float") %}
 				<label class="plugin-option"{% if option.help %} title="{{ option.help }}"{% endif %}>
 					<span>{{ option.dest | replace("_", " ") }}</span>
 					{% if option.type == "bool" %}
-					<input type="checkbox" name="{{ field }}" value="1" x-model="{{ model }}">
+					<input type="checkbox" name="{{ input_name }}" value="1" x-model="{{ alpine_path }}">
 					{% else %}
-					<input type="{{ 'number' if option.type in ('int', 'float') else 'text' }}"
-						{% if option.type == "float" %}step="any"{% endif %}
-						class="input-sm" name="{{ field }}" x-model="{{ model }}">
+					<input type="{{ 'number' if is_number else 'text' }}"{% if option.type == "float" %} step="any"{% endif %}
+						class="input-sm" name="{{ input_name }}" x-model="{{ alpine_path }}">
 					{% endif %}
 				</label>
 				{% endfor %}
 			</div>
 			{% endfor %}
-			<button type="button" class="link-button" @click='opts = {{ defaults | tojson }}'>Reset to config</button>
+			<button type="button" class="link-button" @click="resetOptions()">Reset to config</button>
 		</div>
 		{% endif %}
 	</div>

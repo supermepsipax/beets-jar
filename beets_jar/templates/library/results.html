@@ -3,8 +3,13 @@
 {% elif query and not rows %}
 <p class="panel-empty">Nothing matches that query.</p>
 {% elif rows %}
-{% set ids = rows | map(attribute="id") | map("string") | list %}
-<div class="results" x-data='{ all: {{ ids | tojson }}, selected: {{ ids | tojson }} }'>
+{% set row_ids_json = rows | map(attribute="id") | map("string") | list | tojson %}
+<div class="results" x-data='{
+	allIds: {{ row_ids_json }},
+	selectedIds: {{ row_ids_json }},
+	get allSelected() { return this.selectedIds.length === this.allIds.length },
+	get someSelected() { return this.selectedIds.length > 0 && !this.allSelected },
+}'>
 	<form id="results-form" @submit.prevent>
 		<input type="hidden" name="kind" value="{{ kind }}">
 		<input type="hidden" name="query" value="{{ query }}">
@@ -13,9 +18,9 @@
 	<div class="results-head">
 		<label class="check-label">
 			<input type="checkbox"
-				:checked="selected.length === all.length"
-				:indeterminate="selected.length > 0 && selected.length < all.length"
-				@change="selected = $el.checked ? [...all] : []">
+				:checked="allSelected"
+				:indeterminate="someSelected"
+				@change="selectedIds = $el.checked ? [...allIds] : []">
 			Select all
 		</label>
 		<span id="process-note" class="results-note" aria-live="polite"></span>
@@ -32,7 +37,7 @@
 		{% for row in rows %}
 		<li class="result-row" id="row-{{ kind }}-{{ row.id }}">
 			<input type="checkbox" name="ids" value="{{ row.id }}" form="results-form"
-				x-model="selected" aria-label="Select {{ row.title }}">
+				x-model="selectedIds" aria-label="Select {{ row.title }}">
 			<span class="result-main">
 				<strong>{{ row.title }}</strong>
 				{% if row.subtitle %}<span>{{ row.subtitle }}</span>{% endif %}

@@ -1,27 +1,18 @@
 {% extends "base.html" %}
+{% from "macros/controls.html" import drawer_toolbar %}
 
 {% block title %}Library - Beets-Jar{% endblock %}
 
 {% block content %}
-<div class="library-layout" x-data="{ left: false, right: false }" @keydown.escape.window="left = false; right = false">
+<div class="split-layout" x-data="{ openDrawer: null }" @keydown.escape.window="openDrawer = null">
+	{{ drawer_toolbar("☰ Plugins", "Processes") }}
 
-	{# Mobile only (hidden by CSS on desktop) #}
-	<div class="library-toolbar">
-		<button type="button" class="drawer-toggle drawer-toggle-left" @click="left = !left; right = false">
-			☰Plugins
-		</button>
-		<button type="button" class="drawer-toggle drawer-toggle-right" @click="right = !right; left = false">
-			Processes
-		</button>
-	</div>
-	<div class="drawer-backdrop" x-show="left || right" x-cloak @click="left = false; right = false"></div>
-
-	<aside id="plugin-panel" class="library-panel drawer" :class="{ 'is-open': left }">
-   		<h2 class="panel-title">
-   			Plugins
-   			<span class="help-dot" tabindex="0"
-   				title="Switch plugins on, then press Process under your search. Each plugin runs as its own job, one at a time. Settings only change that run; your config stays as it is.">?</span>
-   		</h2>
+	<aside id="plugin-panel" class="side-panel drawer-left" :class="{ 'is-open': openDrawer === 'left' }">
+		<div class="panel-head">
+			<h2 class="panel-title">Plugins</h2>
+			<span class="help-dot" tabindex="0"
+				title="Switch plugins on, then press Process under your search. Each plugin runs as its own job, one at a time. Settings only change that run; your config stays as it is.">?</span>
+		</div>
 		<div hx-get="/library/plugins" hx-trigger="load"></div>
 	</aside>
 
@@ -29,9 +20,9 @@
 		{% include "library/work_idle.html" %}
 	</section>
 
-	<aside id="processes" class="library-panel drawer" :class="{ 'is-open': right }">
+	<aside id="processes" class="side-panel drawer-right" :class="{ 'is-open': openDrawer === 'right' }">
 		<h2 class="panel-title">Processes</h2>
-   		<div data-stream hx-get="/library/stream/processes" hx-trigger="load"></div>
+		<div data-stream hx-get="/library/stream/processes" hx-trigger="load"></div>
 	</aside>
 </div>
 {% endblock %}

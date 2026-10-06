@@ -4,7 +4,8 @@
 
 {% block content %}
 <div class="config-page">
-	<form id="config-form" class="work-card config-card"
+	{# is-loading hides the textarea until CodeMirror replaces it (config-editor.js) #}
+	<form id="config-form" class="work-card config-card is-loading"
 	      hx-post="/configuration" hx-target="#config-status" hx-swap="outerHTML">
 		<div class="import-card-header config-bar">
 			<strong class="import-card-title">config.yaml</strong>
@@ -13,10 +14,6 @@
 				<button type="submit" class="button-secondary" disabled>Save</button>
 			</div>
 		</div>
-		<script>
-			// this will hide the fallback textarea until/if CodeMirror replaces it
-			document.currentScript.parentElement.classList.add("is-loading");
-		</script>
 		<textarea name="yaml_text" spellcheck="false" wrap="off">{{ yaml_text }}</textarea>
 		<div id="config-editor" data-keymap="{{ keymap }}"></div>
 	</form>

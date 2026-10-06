@@ -7,6 +7,7 @@
     itself through the stream.
 -#}
 {% extends "modals/base_modal.html" %}
+{% from "macros/controls.html" import cancel_button %}
 
 {% block title %}Clear finished imports{% endblock %}
 
@@ -25,9 +26,7 @@
 	</div>
 
 	<div class="modal-actions">
-		<button type="button" class="button-secondary" @click="$el.closest('dialog').close()">
-			{{ "Cancel" if count else "Close" }}
-		</button>
+		{{ cancel_button("Cancel" if count else "Close") }}
 		{% if count %}
 		<button type="submit" class="button-danger">Clear</button>
 		{% endif %}

@@ -1,4 +1,6 @@
-<dialog class="modal" x-data x-init="$el.showModal()" @close="$el.remove()"
+{#- Modals are swapped into #modal-root. They open themselves on arrival and remove
+    themselves on close, so swapping an empty response into #modal-root also closes one. -#}
+<dialog id="modal" class="modal" x-data x-init="$el.showModal()" @close="$el.remove()"
 	aria-labelledby="modal-title">
 	<header class="modal-header">
 		<strong 

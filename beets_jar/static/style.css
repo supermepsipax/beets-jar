@@ -383,24 +383,115 @@ nav .library-stat-number { font-size: 1.2rem; }
 }
 /* }}} */
 
-/* {{{ --------- Library Page --------- */
-.library-layout {
+/* {{{ --------- Page layout (library + import) --------- */
+/* Three columns: side panel, work area, side panel. Below 900px the side
+   panels become drawers that slide in from the edges. */
+.split-layout {
 	display: grid;
 	grid-template-columns: minmax(240px, 22rem) minmax(0, 1fr) minmax(240px, 22rem);
 	min-height: calc(100vh - 120px); /* roughly the nav height; adjust to taste */
 }
 
-.library-panel {
+.side-panel {
 	padding: 16px;
 	overflow-y: auto;
 }
-#plugin-panel { border-right: 3px dashed var(--border); }
-#processes    { border-left: 3px dashed var(--border); }
+.drawer-left  { border-right: 3px dashed var(--border); }
+.drawer-right { border-left: 3px dashed var(--border); }
 
-.library-toolbar {
+#work-area {
+	padding: 24px;
+	min-width: 0;
+}
+
+.panel-title {
+	margin: 0 0 12px;
+	font-size: 1.4rem;
+}
+
+/* Panel title with a control (a toggle, a button, help) on the right */
+.panel-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+.panel-head .panel-title { margin: 0; }
+.panel-empty {
+	color: var(--text-muted);
+	font-weight: bold;
+}
+
+.drawer-toolbar,
+.drawer-backdrop {
 	display: none; /* mobile only, see media query */
 }
 
+@media (max-width: 900px) {
+	.split-layout {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: auto 1fr; /* toolbar keeps its height; work area takes the rest */
+	}
+
+	.drawer-toolbar {
+		display: flex;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 12px 16px 0;
+	}
+
+	.drawer-backdrop {
+		display: block;
+		position: fixed;
+		inset: 0;
+		z-index: 9;
+		background: rgba(0, 0, 0, 0.3);
+	}
+
+	.side-panel {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		z-index: 10;
+		width: min(85vw, 22rem);
+		box-sizing: border-box;
+		background: var(--bg);
+		transition: transform 0.2s ease;
+	}
+	.drawer-left {
+		left: 0;
+		transform: translateX(-105%);
+		border-right-style: solid;
+	}
+	.drawer-right {
+		right: 0;
+		transform: translateX(105%);
+		border-left-style: solid;
+	}
+	.side-panel.is-open {
+		transform: none;
+		box-shadow: 6px 6px 0 var(--border);
+	}
+
+	#work-area { padding: 16px; }
+}
+
+/* A dot on the drawer button when something in the left panel needs the user */
+.split-layout:has(.drawer-left .needs-you) .drawer-toggle-left::after {
+	content: "";
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	margin-left: 8px;
+	vertical-align: middle;
+	background: var(--danger);
+	border: 2px solid var(--border);
+	border-radius: 50%;
+}
+/* }}} */
+
+/* {{{ --------- Library Page --------- */
 .library-work-idle {
 	display: flex;
 	flex-direction: column;
@@ -510,11 +601,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 	display: flex;
 	flex-shrink: 0;
 	gap: 8px;
-}
-#plugin-panel .panel-title {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
 }
 .help-dot {
 	display: inline-grid;
@@ -643,44 +729,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 }
 
 @media (max-width: 900px) {
-	.library-layout {
-		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: auto 1fr;
-	}
-
-	.library-toolbar {
-		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 12px 16px 0;
-	}
-
-	.library-panel.drawer {
-		position: fixed;
-		top: 0;
-		bottom: 0;
-		z-index: 10;
-		width: min(85vw, 22rem);
-		box-sizing: border-box;
-		background: var(--bg);
-		transition: transform 0.2s ease;
-	}
-	#plugin-panel.drawer {
-		left: 0;
-		transform: translateX(-105%);
-		border-right: 3px solid var(--border);
-	}
-	#processes.drawer {
-		right: 0;
-		transform: translateX(105%);
-		border-left: 3px solid var(--border);
-	}
-	#plugin-panel.drawer.is-open,
-	#processes.drawer.is-open {
-		transform: none;
-		box-shadow: 6px 6px 0 var(--border);
-	}
-
 	.library-query-row { flex-wrap: wrap; }
 	.library-query-row input[type="search"] { flex-basis: 100%; }
 }
@@ -688,44 +736,6 @@ nav .library-stat-number { font-size: 1.2rem; }
 
 /* {{{--------- Import Page --------- */
 [x-cloak] { display: none !important; }
-
-/* ---------- Layout ---------- */
-.import-layout {
-	display: grid;
-	grid-template-columns: minmax(240px, 22rem) minmax(0, 1fr) minmax(240px, 22rem);
-	min-height: calc(100vh - 120px); /* roughly the nav height; adjust to taste */
-}
-
-.import-panel {
-	padding: 16px;
-	overflow-y: auto;
-}
-#in-progress { border-right: 3px dashed var(--border); }
-#finished    { border-left: 3px dashed var(--border); }
-
-.panel-title {
-	margin: 0 0 12px;
-	font-size: 1.4rem;
-}
-
-/* Panel title with a control (e.g. the auto toggle) on the right */
-.panel-head {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	margin-bottom: 12px;
-}
-.panel-head .panel-title { margin: 0; }
-.panel-empty {
-	color: var(--text-muted);
-	font-weight: bold;
-}
-
-.import-toolbar,
-.drawer-backdrop {
-	display: none; /* mobile only, see media query */
-}
 
 /* ---------- Side panel rows ---------- */
 .session-group { margin-bottom: 20px; }
@@ -836,11 +846,6 @@ button.task-row.needs-you:hover {
 }
 
 /* ---------- Work area ---------- */
-#work-area {
-	padding: 24px;
-	min-width: 0;
-}
-
 .work-card {
 	background: var(--surface);
 	border: 3px solid var(--border);
@@ -1117,75 +1122,14 @@ button.task-row.needs-you:hover {
 
 .resume-prompt p { margin: 0 0 20px; }
 
-/* ---------- Mobile: side panels become drawers ---------- */
+/* ---------- Mobile ---------- */
 @media (max-width: 900px) {
-	.import-layout {
-		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: auto 1fr; /* toolbar keeps its height; work area takes the rest */
-	}
-
-	.import-toolbar {
-		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 12px 16px 0;
-	}
-
-	.drawer-backdrop {
-		display: block;
-		position: fixed;
-		inset: 0;
-		z-index: 9;
-		background: rgba(0, 0, 0, 0.3);
-	}
-
-	.import-panel.drawer {
-		position: fixed;
-		top: 0;
-		bottom: 0;
-		z-index: 10;
-		width: min(85vw, 22rem);
-		box-sizing: border-box;
-		background: var(--bg);
-		transition: transform 0.2s ease;
-	}
-	#in-progress.drawer {
-		left: 0;
-		transform: translateX(-105%);
-		border-right: 3px solid var(--border);
-	}
-	#finished.drawer {
-		right: 0;
-		transform: translateX(105%);
-		border-left: 3px solid var(--border);
-	}
-	/* IDs here too: the closed-state rules above use IDs, which would
-	   otherwise outrank a class-only .is-open rule */
-	#in-progress.drawer.is-open,
-	#finished.drawer.is-open {
-		transform: none;
-		box-shadow: 6px 6px 0 var(--border);
-	}
-
-	#work-area { padding: 16px; }
 	.candidate-split { grid-template-columns: minmax(0, 1fr); }
 
 	/* Stacked: no list beside it to match, so cap the track list instead */
 	#candidate-detail { contain: none; min-height: 0; }
 	.candidate-detail { height: auto; }
 	.track-list { max-height: 50vh; }
-}
-
-.import-layout:has(#in-progress .needs-you) .drawer-toggle-left::after {
-	content: "";
-	display: inline-block;
-	width: 10px;
-	height: 10px;
-	margin-left: 8px;
-	vertical-align: middle;
-	background: var(--danger);
-	border: 2px solid var(--border);
-	border-radius: 50%;
 }
 /* }}} */
 
@@ -1244,6 +1188,10 @@ button.task-row.needs-you:hover {
 }
 .config-card.is-loading {
 	background: var(--bg);
+}
+/* Without JS the editor never loads: show the plain textarea */
+@media (scripting: none) {
+	.config-card.is-loading textarea { visibility: visible; }
 }
 
 @media (max-width: 900px) {
