@@ -8,7 +8,7 @@ from fastapi.sse import EventSourceResponse
 
 from beets_jar.dependencies import get_imports, get_lib
 from beets_jar.imports import presenters
-from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
+from beets_jar.imports.registry import ImportRegistry
 from beets_jar.imports.replies import build_reply
 from beets_jar.imports.session import start_web_import, validate_import_path
 from beets_jar.models.imports import FINISHED_SESSION_STATUSES, ChoiceType
@@ -126,9 +126,9 @@ def render_task(
     if session is None:
         prompt = None
     elif task_id is None:
-        prompt = open_session_prompt(session)
+        prompt = session.open_prompt
     else:
-        prompt = open_prompt(task)
+        prompt = task.open_prompt if task else None
 
     if prompt is None:
         if follow and task is not None and task.outcome is None:
@@ -211,11 +211,12 @@ async def candidate_detail(
     index: int,
     imports: ImportRegistry = Depends(get_imports),
 ):
-    located = imports.locate_prompt(session_id, prompt_id)
-    prompt = located[1] if located else None
+    found = imports.find_open_prompt(session_id, prompt_id)
     candidates = []
-    if prompt and not prompt.answered and prompt.kind == "candidate":
-        candidates = prompt.task.candidates or []
+    if found is not None:
+        _, prompt = found
+        if prompt.kind == "candidate":
+            candidates = prompt.task.candidates or []
     if not 1 <= index <= len(candidates):
         return HTMLResponse(
             '<p class="work-note">This choice is no longer available.</p>'
@@ -266,10 +267,10 @@ async def answer_prompt(
 
     Always 200 with HTML, so htmx never has to deal with error statuses.
     """
-    located = imports.locate_prompt(session_id, prompt_id)
-    if located is None or located[1].answered:
+    found = imports.find_open_prompt(session_id, prompt_id)
+    if found is None:
         return render_next(request, imports, note="That choice was already made.")
-    task_id, prompt = located
+    task_id, prompt = found
 
     try:
         reply = build_reply(
@@ -322,13 +323,13 @@ async def abort_modal(
     prompt_id: str,
     imports: ImportRegistry = Depends(get_imports),
 ):
-    located = imports.locate_prompt(session_id, prompt_id)
-    prompt = located[1] if located else None
-    abort = prompt and next(
-        (c for c in prompt.choices if c.short == ChoiceType.ABORT), None
-    )
-    if prompt is None or prompt.answered or abort is None:
+    found = imports.find_open_prompt(session_id, prompt_id)
+    if found is None:
         return HTMLResponse("")  # prompt already gone: nothing to confirm
+    _, prompt = found
+    abort = next((c for c in prompt.choices if c.short == ChoiceType.ABORT), None)
+    if abort is None:
+        return HTMLResponse("")
     return templates.TemplateResponse(
         request,
         "modals/import_abort_modal.html",

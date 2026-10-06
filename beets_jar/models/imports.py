@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from queue import Queue
@@ -112,6 +113,13 @@ class TaskState:
     prompt: Prompt | None = None
     restarted: bool = False
 
+    @property
+    def open_prompt(self) -> Prompt | None:
+        """The task's prompt while it still waits for an answer."""
+        if self.prompt is None or self.prompt.answered:
+            return None
+        return self.prompt
+
 
 @dataclass
 class SessionState:
@@ -123,5 +131,23 @@ class SessionState:
     version: int = 0
     error: str | None = None
 
-    def prompts(self):
-        return [p for p in (self.prompt, *(t.prompt for t in self.tasks.values())) if p]
+    @property
+    def open_prompt(self) -> Prompt | None:
+        """The session's own (resume) prompt while it still waits for an answer."""
+        if self.prompt is None or self.prompt.answered:
+            return None
+        return self.prompt
+
+    def prompts(self) -> list[Prompt]:
+        """Every prompt in the session, answered or not."""
+        task_prompts = [task.prompt for task in self.tasks.values()]
+        return [prompt for prompt in (self.prompt, *task_prompts) if prompt]
+
+    def open_prompts(self) -> Iterator[tuple[str | None, Prompt]]:
+        """(task_id, prompt) for each unanswered prompt, oldest first.
+        The resume prompt comes first, with task_id None."""
+        if self.open_prompt:
+            yield None, self.open_prompt
+        for task in self.tasks.values():
+            if task.open_prompt:
+                yield task.task_id, task.open_prompt

@@ -4,7 +4,7 @@ import os
 
 from beets.autotag import AlbumMatch
 
-from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
+from beets_jar.imports.registry import ImportRegistry
 from beets_jar.models.import_views import CandidateView, PanelGroup, Tag, TrackRow
 from beets_jar.models.imports import (
     FINISHED_SESSION_STATUSES,
@@ -75,7 +75,7 @@ def task_name(session: SessionState, task: TaskState) -> str:
 # ---------- labels ----------
 
 def task_label(task: TaskState) -> str:
-    if open_prompt(task):
+    if task.open_prompt:
         return "Choose →"
     if task.phase <= TaskPhase.QUEUED:
         return "Queued"
@@ -108,7 +108,7 @@ def in_progress(registry: ImportRegistry) -> list[PanelGroup]:
         if session.status in FINISHED_SESSION_STATUSES:
             continue
         tasks = [t for t in session.tasks.values() if t.outcome is None]
-        resume = open_session_prompt(session) is not None
+        resume = session.open_prompt is not None
         groups.append(PanelGroup(
             session=session,
             name=session_name(session),

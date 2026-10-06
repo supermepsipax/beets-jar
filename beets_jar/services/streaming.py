@@ -3,18 +3,55 @@ import asyncio
 from fastapi import Request
 from fastapi.sse import ServerSentEvent
 
+
+class ChangeNotifier:
+    """A version number that SSE streams can wait on.
+
+    ImportRegistry and ProcessRegistry extend this and call notify() after every
+    change; each panel stream re-renders when the version moves.
+    """
+
+    def __init__(self):
+        self.version = 0
+        self._waiters: set[asyncio.Event] = set()
+        self._closing = False
+
+    def notify(self):
+        self.version += 1
+        for waiter in self._waiters:
+            waiter.set()
+
+    @property
+    def closing(self) -> bool:
+        return self._closing
+
+    def close(self):
+        """Server shutdown: wake every stream so it can end."""
+        self._closing = True
+        for waiter in self._waiters:
+            waiter.set()
+
+    async def wait_for_change(self, since_version: int) -> int:
+        if self.version > since_version or self._closing:
+            return self.version
+        waiter = asyncio.Event()
+        self._waiters.add(waiter)
+        try:
+            await waiter.wait()
+        finally:
+            self._waiters.discard(waiter)
+        return self.version
+
 # How often an idle stream checks whether its browser tab went away. Without
 # this, a closed tab's stream lingers until the next change or keepalive.
 DISCONNECT_CHECK_SECONDS = 1
 KEEPALIVE_SECONDS = 30
 
 
-async def panel_stream(request: Request, registry, template, build):
+async def panel_stream(request: Request, registry: ChangeNotifier, template, build):
     """Re-render one side panel on every registry change; only send it if the HTML changed.
 
-    `registry` needs `version`, `closing` and `wait_for_change()` (ImportRegistry,
-    ProcessRegistry). `template` is a loaded Jinja template, rendered with
-    `groups=build(registry)`.
+    `template` is a loaded Jinja template, rendered with `groups=build(registry)`.
     """
     last_version, last_html = -1, None
     idle_seconds = 0

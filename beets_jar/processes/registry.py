@@ -1,5 +1,3 @@
-import asyncio
-
 from beets_jar.models.process_events import (
     ProcessFinished,
     ProcessQueued,
@@ -7,20 +5,19 @@ from beets_jar.models.process_events import (
     TargetFinished,
 )
 from beets_jar.models.processes import ProcessState, ProcessStatus
+from beets_jar.services.streaming import ChangeNotifier
 
 
-class ProcessRegistry:
+class ProcessRegistry(ChangeNotifier):
     """In-memory view of queued/running/finished plugin processes.
 
     Display state only: the ProcessRunner owns the real queue.
     """
 
     def __init__(self, max_finished: int = 50):
+        super().__init__()
         self.processes: dict[str, ProcessState] = {}
-        self.version = 0
         self.max_finished = max_finished
-        self._waiters: set[asyncio.Event] = set()
-        self._closing = False
 
     # ---- reducer ----
     def apply(self, event):
@@ -41,9 +38,10 @@ class ProcessRegistry:
                         state.failed += 1
                         state.last_error = detail
                 case ProcessFinished(status=status, error=error):
-                    state.status, state.error = status, error
+                    state.status = status
+                    state.error = error
                     self._trim()
-        self._notify()
+        self.notify()
 
     # ---- commands ----
     def dismiss(self, process_id: str) -> bool:
@@ -51,36 +49,11 @@ class ProcessRegistry:
         if state is None or not state.finished:
             return False
         del self.processes[process_id]
-        self._notify()
+        self.notify()
         return True
 
     def _trim(self):
-        finished = [pid for pid, s in self.processes.items() if s.finished]
-        for pid in finished[: max(0, len(finished) - self.max_finished)]:
-            del self.processes[pid]
-
-    # ---- SSE plumbing (same as ImportRegistry) ----
-    def _notify(self):
-        self.version += 1
-        for waiter in self._waiters:
-            waiter.set()
-
-    @property
-    def closing(self) -> bool:
-        return self._closing
-
-    def close(self):
-        self._closing = True
-        for waiter in self._waiters:
-            waiter.set()
-
-    async def wait_for_change(self, since_version: int) -> int:
-        if self.version > since_version or self._closing:
-            return self.version
-        waiter = asyncio.Event()
-        self._waiters.add(waiter)
-        try:
-            await waiter.wait()
-        finally:
-            self._waiters.discard(waiter)
-        return self.version
+        """Keep at most max_finished finished processes, dropping the oldest."""
+        finished_ids = [pid for pid, state in self.processes.items() if state.finished]
+        for process_id in finished_ids[: max(0, len(finished_ids) - self.max_finished)]:
+            del self.processes[process_id]

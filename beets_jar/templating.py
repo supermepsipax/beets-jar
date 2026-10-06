@@ -5,7 +5,6 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 
 from beets_jar.imports import presenters
-from beets_jar.imports.registry import open_prompt
 
 APP_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -20,5 +19,4 @@ templates.env.globals.update(
     outcome_tag=presenters.outcome_tag,
     can_restart=presenters.can_restart,
     choice_label=presenters.choice_label,
-    open_prompt=open_prompt,
 )

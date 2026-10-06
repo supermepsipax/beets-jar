@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from beets_jar.dependencies import get_imports, get_lib
 from beets_jar.imports import presenters
-from beets_jar.imports.registry import ImportRegistry, open_prompt, open_session_prompt
+from beets_jar.imports.registry import ImportRegistry
 from beets_jar.imports.session import start_web_import, validate_import_path
 from beets_jar.models.api import StartImport
 from beets_jar.models.imports import SessionState, TaskState
@@ -102,7 +102,7 @@ def session_payload(session: SessionState, base_url: str) -> dict:
     return {
         "session_id": session.session_id,
         "status": session.status.value,  # running | needs_input | completed | aborted | failed
-        "needs_input": open_session_prompt(session) is not None
+        "needs_input": session.open_prompt is not None
         or any(t["needs_input"] for t in tasks),
         "paths": session.paths,
         "error": session.error,
@@ -119,5 +119,5 @@ def _task_payload(session: SessionState, task: TaskState) -> dict:
         "items": task.summary.item_count,
         "phase": task.phase.name.lower(),  # queued | lookup | choosing | chosen | applying | files | done
         "outcome": task.outcome.value if task.outcome else None,
-        "needs_input": open_prompt(task) is not None,
+        "needs_input": task.open_prompt is not None,
     }

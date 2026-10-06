@@ -11,7 +11,7 @@
 	{% endif %}
 
 	{% for task in group.tasks %}
-	{% if open_prompt(task) %}
+	{% if task.open_prompt %}
 	<button type="button" class="task-row needs-you"
 		hx-get="/import/work/{{ group.session.session_id }}/{{ task.task_id }}" hx-target="#work-area">
 		<span class="task-name">{{ task_name(group.session, task) }}</span>
