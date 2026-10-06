@@ -44,7 +44,7 @@ def _review_url(base_url: str, session_id: str) -> str:
 
 
 @router.post("/imports", status_code=201)
-async def start(
+async def start_import_session(
     body: StartImport,
     request: Request,
     lib: Library = Depends(get_lib),
@@ -86,7 +86,7 @@ async def get_session(
 
 
 @router.delete("/imports/{session_id}", status_code=204)
-async def dismiss(session_id: str, imports: ImportRegistry = Depends(get_imports)):
+async def dismiss_import_session(session_id: str, imports: ImportRegistry = Depends(get_imports)):
     if session_id not in imports.sessions:
         raise HTTPException(404)
     if not imports.dismiss(session_id):

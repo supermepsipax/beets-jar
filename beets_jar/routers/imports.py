@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from beets import config
 from beets.library import Library
 from fastapi import APIRouter, Depends, Form, Request, Response
@@ -17,16 +19,11 @@ router = APIRouter(tags=["imports"])
 
 
 @router.get("/import", response_class=HTMLResponse)
-async def search_page(
+async def import_page(
     request: Request, session: str | None = None, task: str | None = None
 ):
-    """Main importer page. `?session=` (and optionally `&task=`) focus the work area."""
-    if session and task:
-        work_url = f"/import/work/{session}/{task}?follow=1"
-    elif session:
-        work_url = f"/import/work?session={session}"
-    else:
-        work_url = "/import/work"
+    """Main import page. `?session=` (and optionally `&task=`) focus the work area."""
+    work_url = _work_url(session, task, follow=True)
     return templates.TemplateResponse(request, "imports.html", {"work_url": work_url})
 
 
@@ -49,6 +46,21 @@ async def stream_finished(
 
 
 # ---------------------------------------------------------------- work-area rendering
+
+
+def _work_url(session_id: str | None = None, task_id: str | None = None, *, follow=False) -> str:
+    """URL of the work-area route that shows a task, a session's first prompt, or the next prompt."""
+    if session_id and task_id:
+        url = f"/import/work/{quote(session_id, safe='')}/{quote(task_id, safe='')}"
+        return f"{url}?follow=1" if follow else url
+    if session_id:
+        return f"/import/work?session={quote(session_id, safe='')}"
+    return "/import/work"
+
+
+def _choose_url(session_id: str, prompt_id: str) -> str:
+    """Where a prompt's forms post their answer."""
+    return f"/import/sessions/{session_id}/prompts/{prompt_id}/choose"
 
 
 def _work(request: Request, name: str, **context) -> HTMLResponse:
@@ -93,7 +105,7 @@ def render_session(request, imports, session_id):
             "work_waiting",
             session=session,
             task=None,
-            poll_url=f"/import/work?session={session_id}",
+            poll_url=_work_url(session_id),
             message="Looking up…",
         )
     return render_next(
@@ -125,7 +137,7 @@ def render_task(
                 "work_waiting",
                 session=session,
                 task=task,
-                poll_url=f"/import/work/{session_id}/{task_id}?follow=1",
+                poll_url=_work_url(session_id, task_id, follow=True),
                 message="Searching…",
             )
         return render_next(request, imports, note=note, prefer_session=session_id)
@@ -136,7 +148,7 @@ def render_task(
         "prompt": prompt,
         "note": note,
         "error": error,
-        "choose_url": f"/api/import/sessions/{session_id}/prompts/{prompt.prompt_id}/choose",
+        "choose_url": _choose_url(session_id, prompt.prompt_id),
     }
     if prompt.kind == "candidate":
         # Reading prompt.task is safe: its pipeline thread is blocked on reply.get()
@@ -212,14 +224,14 @@ async def candidate_detail(
         request,
         "candidate_detail",
         candidate=presenters.candidate_view(candidates[index - 1], index),
-        choose_url=f"/api/import/sessions/{session_id}/prompts/{prompt_id}/choose",
+        choose_url=_choose_url(session_id, prompt_id),
     )
 
 
 # ---------------------------------------------------------------- actions
 
 
-@router.post("/api/import/start", response_class=HTMLResponse)
+@router.post("/import/start", response_class=HTMLResponse)
 async def start_import(
     request: Request,
     path: str = Form(""),
@@ -236,10 +248,10 @@ async def start_import(
 
 
 @router.post(
-    "/api/import/sessions/{session_id}/prompts/{prompt_id}/choose",
+    "/import/sessions/{session_id}/prompts/{prompt_id}/choose",
     response_class=HTMLResponse,
 )
-async def choose(
+async def answer_prompt(
     request: Request,
     session_id: str,
     prompt_id: str,
@@ -280,7 +292,7 @@ async def choose(
     return render_task(request, imports, session_id, task_id)
 
 
-@router.post("/api/import/sessions/{session_id}/tasks/{task_id}/restart")
+@router.post("/import/sessions/{session_id}/tasks/{task_id}/restart")
 async def restart_task(
     session_id: str,
     task_id: str,
@@ -322,13 +334,13 @@ async def abort_modal(
         "modals/import_abort_modal.html",
         {
             "session": imports.sessions[session_id],
-            "choose_url": f"/api/import/sessions/{session_id}/prompts/{prompt_id}/choose",
+            "choose_url": _choose_url(session_id, prompt_id),
             "value": abort.short,
         },
     )
 
 
-@router.delete("/api/import/sessions", response_class=HTMLResponse)
+@router.delete("/import/sessions", response_class=HTMLResponse)
 async def dismiss_finished_sessions(imports: ImportRegistry = Depends(get_imports)):
     imports.dismiss_finished()
     # Empty body swapped into #modal-root removes (closes) the confirm dialog;
@@ -336,7 +348,7 @@ async def dismiss_finished_sessions(imports: ImportRegistry = Depends(get_import
     return HTMLResponse("")
 
 
-@router.delete("/api/import/sessions/{session_id}")
+@router.delete("/import/sessions/{session_id}")
 async def dismiss_session(
     session_id: str, imports: ImportRegistry = Depends(get_imports)
 ):

@@ -59,7 +59,7 @@ form.addEventListener("submit", () => (submitted = textarea.value));
 async function lintYaml(view) {
 	let problems;
 	try {
-		const response = await fetch("/api/config/lint", {
+		const response = await fetch("/configuration/lint", {
 			method: "POST",
 			body: new URLSearchParams({ yaml_text: view.state.doc.toString() }),
 		});

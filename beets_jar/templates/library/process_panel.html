@@ -9,13 +9,13 @@
 			<span class="task-row-end">
 				{% if row.can_cancel %}
 				<button type="button" class="icon-button" title="Stop"
-					hx-post="/api/processes/{{ row.process_id }}/cancel" hx-swap="none">■</button>
+					hx-post="/library/processes/{{ row.process_id }}/cancel" hx-swap="none">■</button>
 				{% endif %}
 				{% if row.finished %}
 				<button type="button" class="icon-button" title="Run again"
-					hx-post="/api/processes/{{ row.process_id }}/restart" hx-swap="none">↻</button>
+					hx-post="/library/processes/{{ row.process_id }}/restart" hx-swap="none">↻</button>
 				<button type="button" class="icon-button" title="Dismiss"
-					hx-delete="/api/processes/{{ row.process_id }}" hx-swap="none">×</button>
+					hx-delete="/library/processes/{{ row.process_id }}" hx-swap="none">×</button>
 				{% endif %}
 			</span>
 		</div>

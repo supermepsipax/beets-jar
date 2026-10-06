@@ -17,7 +17,7 @@
 
 {% block content %}
 <form x-data="{ disk: false }"
-	hx-delete="/api/library/{{ kind }}/{{ row.id }}"
+	hx-delete="/library/rows/{{ kind }}/{{ row.id }}"
 	hx-target="#modal-root"
 	hx-swap="innerHTML">
 

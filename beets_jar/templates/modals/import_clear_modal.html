@@ -11,7 +11,7 @@
 {% block title %}Clear finished imports{% endblock %}
 
 {% block content %}
-<form hx-delete="/api/import/sessions" hx-target="#modal-root" hx-swap="innerHTML">
+<form hx-delete="/import/sessions" hx-target="#modal-root" hx-swap="innerHTML">
 	<div class="modal-body">
 		{% if count %}
 		<p class="modal-subject">

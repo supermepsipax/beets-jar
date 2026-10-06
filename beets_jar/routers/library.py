@@ -14,6 +14,7 @@ from beets_jar.processes.registry import ProcessRegistry
 from beets_jar.processes.runner import ProcessRunner
 from beets_jar.processes.specs import build_specs
 from beets_jar.services.library import get_album_or_item, result_row
+from beets_jar.services.plugins import get_panel_plugins
 from beets_jar.services.streaming import panel_stream
 from beets_jar.templating import templates
 
@@ -65,14 +66,22 @@ async def library_stats(
     return response
 
 
-@router.get("/library/query_results", response_class=HTMLResponse)
-async def get_query_results(
+@router.get("/library/plugins", response_class=HTMLResponse)
+async def plugin_panel(request: Request):
+    """Plugins side panel: manifest plugins with their commands and settings."""
+    return templates.TemplateResponse(
+        request, "library/plugin_panel.html", {"plugins": get_panel_plugins()}
+    )
+
+
+@router.get("/library/query-results", response_class=HTMLResponse)
+async def query_results(
     request: Request,
     lib: Library = Depends(get_lib),
     query: str = "",
     album: bool = False,
 ):
-    """Main library page."""
+    """Search results for the library page's query box."""
 
     query = query.strip()
     kind: Kind = "album" if album else "item"
@@ -123,8 +132,8 @@ async def delete_modal(
     return _delete_modal(request, kind, obj)
 
 
-@router.delete("/api/library/{kind}/{id}", response_class=HTMLResponse)
-async def delete_object(
+@router.delete("/library/rows/{kind}/{id}", response_class=HTMLResponse)
+async def delete_album_or_item(
     request: Request,
     kind: Kind,
     id: int,
@@ -146,7 +155,7 @@ def _note(text: str) -> HTMLResponse:
     return HTMLResponse(str(escape(text)))
 
 
-@router.post("/api/library/process", response_class=HTMLResponse)
+@router.post("/library/processes", response_class=HTMLResponse)
 async def queue_processes(
     request: Request,
     lib: Library = Depends(get_lib),
@@ -172,13 +181,13 @@ async def stream_processes(
         yield event
 
 
-@router.post("/api/processes/{process_id}/cancel")
+@router.post("/library/processes/{process_id}/cancel")
 async def cancel_process(process_id: str, runner: ProcessRunner = Depends(get_runner)):
     runner.cancel(process_id)
     return Response(status_code=204)  # the panel updates through the stream
 
 
-@router.post("/api/processes/{process_id}/restart")
+@router.post("/library/processes/{process_id}/restart")
 async def restart_process(
     process_id: str,
     processes: ProcessRegistry = Depends(get_processes),
@@ -190,7 +199,7 @@ async def restart_process(
     return Response(status_code=204)
 
 
-@router.delete("/api/processes/{process_id}")
+@router.delete("/library/processes/{process_id}")
 async def dismiss_process(
     process_id: str, processes: ProcessRegistry = Depends(get_processes)
 ):

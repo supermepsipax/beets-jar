@@ -16,7 +16,6 @@ from beets_jar.routers.configuration import router as configuration_router
 from beets_jar.routers.external_api import router as external_api_router
 from beets_jar.routers.imports import router as imports_router
 from beets_jar.routers.library import router as library_router
-from beets_jar.routers.plugins import router as plugins_router
 from beets_jar.services.event_bus import import_event_bus, process_event_bus
 from beets_jar.templating import STATIC_DIR
 
@@ -94,7 +93,6 @@ def create_app(lib: Library | None = None) -> FastAPI:
     app.include_router(library_router)
     app.include_router(imports_router)
     app.include_router(configuration_router)
-    app.include_router(plugins_router)
     app.include_router(external_api_router)
     return app
 

@@ -7,7 +7,7 @@
 		<h3 class="session-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
 		{% if group.dismissable %}
 		<button type="button" class="icon-button" title="Dismiss"
-			hx-delete="/api/import/sessions/{{ group.session.session_id }}" hx-swap="none">×</button>
+			hx-delete="/import/sessions/{{ group.session.session_id }}" hx-swap="none">×</button>
 		{% endif %}
 	</div>
 
@@ -19,7 +19,7 @@
 			<span class="tag tag-{{ tag.tone }}">{{ tag.text }}</span>
 			{% if can_restart(task) %}
 			<button type="button" class="icon-button" title="Try again"
-				hx-post="/api/import/sessions/{{ group.session.session_id }}/tasks/{{ task.task_id }}/restart"
+				hx-post="/import/sessions/{{ group.session.session_id }}/tasks/{{ task.task_id }}/restart"
 				hx-swap="none">↻</button>
 			{% endif %}
 		</span>

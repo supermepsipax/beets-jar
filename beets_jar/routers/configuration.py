@@ -59,7 +59,7 @@ async def update_configuration(request: Request, yaml_text: str = Form(...)):
     )
     return response
 
-@router.post("/api/config/lint")
+@router.post("/configuration/lint")
 async def lint_configuration(yaml_text: str = Form(...)) -> list[dict]:
     _, problem = parse_yaml(yaml_text)
     return [problem] if problem else []
