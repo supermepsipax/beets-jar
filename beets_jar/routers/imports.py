@@ -242,8 +242,9 @@ async def start_import(
         return render_idle(
             request, import_registry, error="That folder doesn't exist on the server."
         )
-    start_web_import(lib, import_registry, [path])
+    start_web_import(lib, import_registry, paths=[path])
     return render_idle(request, import_registry, note="Import started.")
+
 
 
 @router.post(

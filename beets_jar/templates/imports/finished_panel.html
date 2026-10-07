@@ -4,7 +4,7 @@
 {% for group in groups %}
 <div class="panel-group">
 	<div class="panel-group-head">
-		<h3 class="panel-group-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
+		<h3 class="panel-group-name"{% if group.session.paths %} title="{{ group.session.paths | join(', ') }}"{% endif %}>{{ group.name }}</h3>
 		{% if group.dismissable %}
 		<button type="button" class="icon-button" title="Dismiss"
 			hx-delete="/import/sessions/{{ group.session.session_id }}" hx-swap="none">×</button>

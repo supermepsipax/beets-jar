@@ -49,8 +49,11 @@ class ImportRegistry(ChangeNotifier):
                 return
 
         match event:
-            case SessionStarted(paths=paths):
-                session_state.paths = list(paths)
+            case SessionStarted(paths=paths, query=query):
+                if paths is not None:
+                    session_state.paths = list(paths)
+                if query is not None:
+                    session_state.query = query
 
             case TaskSeen(task_id=task_id, phase=phase, summary=summary):
                 task_state = session_state.tasks.get(task_id)

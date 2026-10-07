@@ -1,6 +1,6 @@
 {% for group in groups %}
 <div class="panel-group">
-	<h3 class="panel-group-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
+	<h3 class="panel-group-name"{% if group.session.paths %} title="{{ group.session.paths | join(', ') }}"{% endif %}>{{ group.name }}</h3>
 
 	{% if group.resume %}
 	<button type="button" id="resume-{{ group.session.session_id }}" class="task-row row-card needs-you"

@@ -354,18 +354,23 @@ def validate_import_path(raw_path: str) -> str | None:
     return path
 
 
-def start_web_import(lib, import_registry, paths, *, restart: bool = False, seed_id: str = "") -> WebImportSession:
+def start_web_import(lib, import_registry,  *, paths = None, query = None, restart: bool = False, seed_id: str = "") -> WebImportSession:
     """Create a session, register it in the registry right away, and run it in a thread.
 
     Must be called from the event loop (i.e. from an endpoint), because it
     touches the registry directly.
     """
+
     session = WebImportSession(
-        lib=lib, paths=paths, loghandler=None, query=None, restart=restart, seed_id=seed_id
+        lib=lib, paths=paths, loghandler=None, query=query, restart=restart, seed_id=seed_id
     )
+
+    if paths is not None:
+        paths = tuple(displayable_path(path) for path in session.paths)
+
     import_registry.apply(
         SessionStarted(
-            session.session_id, tuple(displayable_path(path) for path in session.paths)
+            session.session_id, paths, query
         )
     )
     threading.Thread(target=session.run, daemon=True).start()

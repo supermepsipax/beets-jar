@@ -1,5 +1,6 @@
 import logging
 
+from beets import config
 from beets.library import Album, Item, Library
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -7,12 +8,20 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.sse import EventSourceResponse
 from markupsafe import escape
 
-from beets_jar.dependencies import get_lib, get_process_registry, get_runner
+from beets_jar.dependencies import (
+    get_import_registry,
+    get_lib,
+    get_process_registry,
+    get_runner,
+)
+from beets_jar.imports.registry import ImportRegistry
+from beets_jar.imports.session import start_web_import
 from beets_jar.models.library import Kind
 from beets_jar.processes.presenters import panel_groups
 from beets_jar.processes.registry import ProcessRegistry
 from beets_jar.processes.runner import ProcessRunner
-from beets_jar.processes.specs import build_specs
+from beets_jar.processes.specs import build_queries, build_specs
+from beets_jar.routers.imports import render_idle
 from beets_jar.services.library import get_album_or_item, result_row
 from beets_jar.services.plugins import get_panel_plugins
 from beets_jar.services.streaming import panel_stream
@@ -79,6 +88,33 @@ async def query_results(
     return templates.TemplateResponse(request, "library/results.html", context)
 
 
+@router.post("/library/import/start", response_class=HTMLResponse)
+async def start_library_import(
+    request: Request,
+    lib: Library = Depends(get_lib),
+    import_registry: ImportRegistry = Depends(get_import_registry),
+):
+    form = await request.form()
+
+
+    kind = form.get("kind")
+    ids = [int(raw_id) for raw_id in form.getlist("ids") if str(raw_id).isdigit()]
+
+    if kind not in ("album", "item") or not ids:
+        return _note("Select something first.")
+
+    target = "item" if config["import"]["singletons"].get(bool) else "album"
+
+    queries = build_queries(lib, target, kind, ids)
+
+    if not queries:
+        return _note("Nothing to re-import for that selection.")
+
+    query = [part for q in queries for part in (q, ",")][:-1]
+
+    start_web_import(lib, import_registry, query=query)
+    return _note(f"Re-importing {len(ids)} {kind}{'s' if len(ids) > 1 else ''}")
+
 def _delete_modal(
     request: Request, kind: Kind, album_or_item: Album | Item, error: str | None = None
 ):
@@ -111,7 +147,9 @@ async def delete_modal(
 ):
     album_or_item = get_album_or_item(lib, kind, album_or_item_id)
     if album_or_item is None:
-        return _deleted_row(request, kind, album_or_item_id)  # already gone: just update the row
+        return _deleted_row(
+            request, kind, album_or_item_id
+        )  # already gone: just update the row
     return _delete_modal(request, kind, album_or_item)
 
 

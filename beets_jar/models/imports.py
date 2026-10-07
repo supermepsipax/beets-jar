@@ -1,12 +1,13 @@
 """Import state: what the registry tracks per session/task, and what a prompt carries."""
 
 from __future__ import annotations
+from beets.dbcore import Query
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from queue import Queue
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
 from beets.autotag import AlbumMatch, TrackMatch
 from beets.util import PromptChoice, displayable_path
@@ -124,9 +125,10 @@ class TaskState:
 @dataclass
 class SessionState:
     session_id: str
-    paths: list[str] = field(default_factory=list)
     status: SessionStatus = SessionStatus.RUNNING
     tasks: dict[str, TaskState] = field(default_factory=dict)
+    query: str | Sequence[str] | Query | None = None
+    paths: list[str] | None = None
     prompt: Prompt | None = None  # resume prompt
     version: int = 0
     error: str | None = None

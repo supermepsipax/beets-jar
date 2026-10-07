@@ -61,7 +61,7 @@ async def start_import_session(
     path = validate_import_path(body.path)
     if path is None:
         raise HTTPException(400, "Path does not exist on the server")
-    session = start_web_import(lib, import_registry, [path], seed_id=(body.seed_id or ""))
+    session = start_web_import(lib, import_registry, paths=[path], seed_id=(body.seed_id or ""))
     base_url = _base_url(request)
     return {
         "session_id": session.session_id,

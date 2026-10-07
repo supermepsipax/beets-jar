@@ -31,6 +31,13 @@
 			hx-swap="innerHTML">
 			Process {{ "albums" if kind == "album" else "tracks" }}
 		</button>
+		<span id="import-note" class="results-note" aria-live="polite"></span>
+		<button type="button" class="results-import" form="results-form"
+			hx-post="/library/import/start"
+			hx-target="#import-note"
+			hx-swap="innerHTML">
+			Re-import {{ "albums" if kind == "album" else "tracks" }}
+		</button>
 	</div>
 
 	<ul class="result-list">

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from beets.dbcore import Query
+
 from beets_jar.models.imports import (
     Prompt,
     SessionStatus,
@@ -16,7 +18,8 @@ from beets_jar.models.imports import (
 @dataclass(frozen=True)
 class SessionStarted:
     session_id: str
-    paths: tuple[str, ...]
+    paths: tuple[str, ...] | None
+    query: str | Query | None
 
 
 @dataclass(frozen=True)
