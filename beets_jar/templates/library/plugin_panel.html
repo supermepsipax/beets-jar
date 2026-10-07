@@ -10,7 +10,7 @@
 	<div class="plugin-card" x-data='{
 		enabled: $persist(false).as("{{ storage_key }}:on"),
 		settingsOpen: $persist(false).as("{{ storage_key }}:open"),
-		selectedCommand: $persist({{ command_names[0] | tojson }}).as("{{ storage_key }}:command"),
+		selectedCommand: $persist({{ command_names| first | tojson }}).as("{{ storage_key }}:command"),
 		optionValues: $persist({{ defaults_json }}).as("{{ storage_key }}:opts:{{ plugin.defaults_hash }}"),
 		commandsWithOptions: {{ commands_with_options | tojson }},
 		get hasOptions() { return this.commandsWithOptions.includes(this.selectedCommand) },

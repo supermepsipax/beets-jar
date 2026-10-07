@@ -1,11 +1,14 @@
 **UI**
 - [x] Find ideal card size for import flow
 - [x] Create modal dialogues that can be served with various prompts
+- [ ] Better way to display plugins in panel with on/off + settings
 **Import**
 - [x] Basic import w/ user interaction
 - [x] Auto prompt toggle so prompts are pushed to the work area
 - [x] Configurable "favorite" paths for quick import
+- [x] Import via library query
 - [ ] Import via file upload in browser
+- [ ] Import with temp config changes (timid, quiet, etc)
 - [x] Import with seeded context (mbid, album/artist title)
 - [ ] Upgrade import for desired bitrate/format
 **Configuration**

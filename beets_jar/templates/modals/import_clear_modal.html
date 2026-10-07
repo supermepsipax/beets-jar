@@ -9,26 +9,25 @@
 {% extends "modals/base_modal.html" %}
 {% from "macros/controls.html" import cancel_button %}
 
-{% block title %}Clear finished imports{% endblock %}
+{% block title %}Clear Finished Imports{% endblock %}
 
 {% block content %}
 <form hx-delete="/import/sessions" hx-target="#modal-root" hx-swap="innerHTML">
 	<div class="card-body">
 		{% if count %}
 		<p class="modal-subject">
-			<strong>{{ count }} finished import{{ "s" if count != 1 }}</strong>
-			<span>Imports that are still running stay.</span>
+			<strong>Clear {{ count }} finished import{{ "s" if count != 1 }}?</strong>
 		</p>
-		<p class="modal-hint">Skipped or failed tasks can't be retried once they're cleared.</p>
 		{% else %}
 		<p class="modal-subject"><strong>Nothing to clear yet.</strong></p>
 		{% endif %}
 	</div>
 
 	<div class="modal-actions">
-		{{ cancel_button("Cancel" if count else "Close") }}
+		{% set cancel_label = "Cancel" if count else "Close" %}
+		{{ cancel_button(cancel_label) }}
 		{% if count %}
-		<button type="submit" class="button-danger">Clear</button>
+		<button type="submit" class="button-danger">Yes</button>
 		{% endif %}
 	</div>
 </form>

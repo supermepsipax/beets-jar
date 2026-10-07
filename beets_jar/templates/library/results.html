@@ -17,25 +17,18 @@
 
 	<div class="results-head">
 		<label class="check-label">
-			<input type="checkbox"
-				:checked="allSelected"
-				:indeterminate="someSelected"
+			<input type="checkbox" :checked="allSelected" :indeterminate="someSelected"
 				@change="selectedIds = $el.checked ? [...allIds] : []">
 			Select all
 		</label>
 		<span id="process-note" class="results-note" aria-live="polite"></span>
-		<button type="button" class="results-process" form="results-form"
-			hx-post="/library/processes"
-			hx-include="#plugin-form"
-			hx-target="#process-note"
-			hx-swap="innerHTML">
+		<button type="button" class="results-process" form="results-form" hx-post="/library/processes"
+			hx-include="#plugin-form" hx-target="#process-note" hx-swap="innerHTML">
 			Process {{ "albums" if kind == "album" else "tracks" }}
 		</button>
 		<span id="import-note" class="results-note" aria-live="polite"></span>
-		<button type="button" class="results-import" form="results-form"
-			hx-post="/library/import/start"
-			hx-target="#import-note"
-			hx-swap="innerHTML">
+		<button type="button" class="results-import" form="results-form" hx-post="/library/import/start"
+			hx-target="#import-note" hx-swap="innerHTML">
 			Re-import {{ "albums" if kind == "album" else "tracks" }}
 		</button>
 	</div>
@@ -43,8 +36,8 @@
 	<ul class="result-list">
 		{% for row in rows %}
 		<li class="result-row row-card" id="row-{{ kind }}-{{ row.id }}">
-			<input type="checkbox" name="ids" value="{{ row.id }}" form="results-form"
-				x-model="selectedIds" aria-label="Select {{ row.title }}">
+			<input type="checkbox" name="ids" value="{{ row.id }}" form="results-form" x-model="selectedIds"
+				aria-label="Select {{ row.title }}">
 			<span class="result-main">
 				<strong>{{ row.title }}</strong>
 				{% if row.subtitle %}<span>{{ row.subtitle }}</span>{% endif %}
@@ -53,8 +46,7 @@
 			<span class="row-actions">
 				<button type="button" class="button-secondary button-sm" disabled title="Coming soon">Edit</button>
 				<button type="button" class="button-danger button-sm"
-					hx-get="/library/modal/delete?kind={{ kind }}&album_or_item_id={{ row.id }}"
-					hx-target="#modal-root"
+					hx-get="/library/modal/delete?kind={{ kind }}&album_or_item_id={{ row.id }}" hx-target="#modal-root"
 					hx-swap="innerHTML">Delete</button>
 			</span>
 		</li>

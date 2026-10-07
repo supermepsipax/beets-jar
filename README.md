@@ -1,8 +1,8 @@
 # Beets Jar
 
-Crack open a fresh jar of beets!
+Crack open a delicious jar of beets!
 
-Beets-Jar is a beets plugin that serves a FastAPI application for those that tire of the terminal. Look at your library, edit your configuration, make decisions for a confused auto-tagger, initiate and control imports via external applications, and (eventually, maybe) much, much more!
+Beets-Jar is a beets plugin that serves a FastAPI application for those that tire of the terminal. Manage your library, edit your configuration, make decisions for a confused auto-tagger, initiate and control imports via external applications, and (eventually, maybe) much, much more!
 
 ## Why does this exist?
 I originally developed beets jar as a containerized version of beets (hence beets jar) but in early stages of development I decided to switch to a beets plugin first design that can also be containerized. I feel like this fits in much better with the whole beets ethos that I have grown to love (and not everything needs to be containerized!), plus this way you keep your configuration, plugins, and manage your own dependencies (for better or for worse!)
@@ -14,9 +14,11 @@ My secondary reasons are:
     - I want to contribute to beets in some form or another
 
 ## What I want beets jar to be
-I want beets jar to complement the command line but not replace it. I think having a GUI makes beets much more user friendly and a GUI is much more intuitive for certain work flows. I want the setup to be painless as well, which is primarily why I made the containerization as second class citizen, 
+I want beets jar to complement the command line but not replace it. I think having a GUI makes beets much more user friendly and a GUI is much more intuitive for certain work flows. I want the setup to be painless as well, which is primarily why I made the containerization as second class citizen.
 
-I also want to minimize the information displayed to the user. I don't like information dense or complex user interfaces so I designed beets jar to be simple and (subjectively) intuitive. 
+I also want to minimize the information displayed to the user. I don't like information dense or complex user interfaces so I designed beets jar to be simple and (subjectively) intuitive. I do not intend to bloat this with whatever features I think would be nice, but rather try to achieve parity with the command line for the functions I think are appropriate as well as several features not present in the CLI that come natural to a GUI.
+
+Finally, I want more accessibility, both in terms of user interaction as well as how it is accessed. I've ensured that beets jar is perfectly useable on both desktop/laptops and tablets/phones so you can use it comfortably on almost any device.
 
 ## Similar Projects
 Since other people have similar projects I want to both acknowledge these applications and state where beets jar is differentiated from them.
@@ -25,8 +27,11 @@ Since other people have similar projects I want to both acknowledge these applic
 
 - Beets Flask, a containerized Flask application that utilizes beets. While I think in general this application could have fit most of my use cases a lot of this application's opinionated aspects coupled with its primary deployment method via containerization makes this project both more complex to setup and you lose easy access to the CLI.
 
-## AI Usage
+- beetkeeper, I would say similar to Beets Flask but with a greater focus on automation.
 
+
+## AI Usage
+In the age of slop I feel like any project needs to have one of these sections. I have used, and will continue to use LLMs as an assistant in this project. I mainly use them for the less fun things in software development, template generation, refactoring, etc. I make all architectural and design decisions,
 
 ## Installation + Use
 First install beets jar
@@ -79,7 +84,7 @@ RestartSec=5
 [Install]
 WantedBy=default.target
 ```
-Adjust `ExecStart` to wherever your `beet` executable lives (check with `which beet`). Don't pass `-D` here, systemd handles running it in the background.
+Adjust `ExecStart` to wherever your `beet` executable lives (check with `which beet`). Don't pass `-D` here, systemd handles running it in the background, or do pass it, I'm not your mother.
 
 Enable and start the service:
 ```bash
@@ -87,10 +92,6 @@ systemctl --user daemon-reload
 systemctl --user enable --now beet-jar
 ```
 
-By default user services only run while you're logged in. To start beets jar on boot without logging in, enable lingering for your user:
-```bash
-sudo loginctl enable-linger $USER
-```
 
 Check the status and logs with:
 ```bash
@@ -109,16 +110,15 @@ If you edit the service file itself, run `systemctl --user daemon-reload` before
 ## Current Features
 1. A (subjectively) beautiful front end for your beets setup (with light/dark theme)
 2. Basic library queries
-3. Basic configuration editing + reloading
+3. More advanced configuration editing (better editor + autocomplete suggestions)
 4. Import via RESTful API
-5. User input when autotagger requires intervention
+5. Select, edit, and run plugins on selected library queries
+6. User input when autotagger requires intervention
 
 ## Planned Features
-1. Select, edit, and run plugins on selected library queries
-2. More advanced configuration editing (better editor + autocomplete suggestions)
-3. Import via API can also communicate choices to the user, and a user's choice to the application
-4. Watchable import folder for auto-ingestion
-5. File upload + import in browser
+1. Import via API can also communicate choices to the user, and a user's choice to the application
+2. Watchable import folder for auto-ingestion
+3. File upload + import in browser
 
 ## Not Planned Features
 1. Music server capabilities (already covered by so many better plugins)

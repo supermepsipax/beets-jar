@@ -57,15 +57,29 @@ def short_path(path: str, max_len: int = 32) -> str:
     return "…" + path[-(max_len - 1):]
 
 
+def query_text(query) -> str:
+    """The query as the user would type it: 'artist:foo year:2018'."""
+    if isinstance(query, str):
+        return query
+    if isinstance(query, (list, tuple)):
+        return " ".join(str(part) for part in query)
+    return str(query)
+
+
 def session_name(session: SessionState) -> str:
-    if not session.paths:
-        return "Import"
-    extra = f" +{len(session.paths) - 1}" if len(session.paths) > 1 else ""
-    return short_path(session.paths[0]) + extra
+    if session.paths:
+        extra = f" +{len(session.paths) - 1}" if len(session.paths) > 1 else ""
+        return short_path(session.paths[0]) + extra
+    if session.query:
+        return "Query: " + query_text(session.query)
+    return "Import"
 
 
 def task_name(session: SessionState, task: TaskState) -> str:
-    """Folder name relative to the session root, e.g. "CD1" or "Album/CD1"."""
+    """Folder name relative to the session root, e.g. "CD1" or "Album/CD1".
+
+    Query sessions have no root, so the task's own folder name is used.
+    """
     paths = task.summary.paths
     if not paths:
         return "Untitled"
