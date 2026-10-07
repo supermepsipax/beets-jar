@@ -9,28 +9,10 @@
 	<link rel="stylesheet" href="/static/style.css">
 	<!-- Alpine core and persist must stay on the same version -->
 	<script src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.17.4/dist/cdn.min.js" defer></script>
-	<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0-alpha6/dist/htmx.min.js"></script>
+	<!-- htmx core and its extensions must stay on the same version -->
+	<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/ext/hx-sse.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js" defer></script>
-	<script>
-		// Panel streams ([data-stream]) hold a connection open. Close them when the page
-		// is left (pagehide also covers entering the bfcache) so they don't eat into the
-		// browser's 6-connections-per-host limit, and reopen them on a bfcache restore.
-		// htmx:abort is a no-op in htmx 4.0.0-alpha6 (it calls ctx.abort, but the abort
-		// function lives on ctx.request), so keep a handle on each stream's abort ourselves.
-		// TODO: when upgrading htmx, check whether htmx:abort works and this can go.
-		document.addEventListener("htmx:before:request", (event) => {
-			const element = event.target;
-			if (element.matches?.("[data-stream]")) element._abortStream = event.detail.ctx.request.abort;
-		});
-		window.addEventListener("pagehide", () => {
-			document.querySelectorAll("[data-stream]").forEach((stream) => stream._abortStream?.());
-		});
-		window.addEventListener("pageshow", (event) => {
-			if (!event.persisted) return;
-			document.querySelectorAll("[data-stream]").forEach((stream) =>
-				htmx.ajax("GET", stream.getAttribute("hx-get"), { source: stream, target: stream }));
-		});
-	</script>
 </head>
 
 <body>

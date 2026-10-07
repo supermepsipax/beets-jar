@@ -3,7 +3,7 @@
 	<h3 class="panel-group-name">{{ group.name }}</h3>
 
 	{% for row in group.rows %}
-	<div class="process-row row-card"{% if row.error %} title="{{ row.error }}"{% endif %}>
+	<div id="process-{{ row.process_id }}" class="process-row row-card"{% if row.error %} title="{{ row.error }}"{% endif %}>
 		<div class="process-head">
 			<span class="process-query" title="{{ row.subtitle }}">{{ row.subtitle }}</span>
 			<span class="row-actions">

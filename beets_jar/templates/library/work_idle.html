@@ -2,7 +2,8 @@
 <div class="work-idle">
 	<form class="library-query"
 		hx-get="/library/query-results"
-		hx-trigger="input delay:250ms, change target:input[type='checkbox']" 
+		hx-trigger="input delay:250ms, submit, change target:input[type='checkbox']" 
+		hx-sync="this:queue last"
 		hx-target="#results">
 		<div class="library-query-row">
 			<input type="search" autocomplete="off" name="query" value="" aria-label="Search library">

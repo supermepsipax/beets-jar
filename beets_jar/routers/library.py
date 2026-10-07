@@ -94,12 +94,14 @@ def _delete_modal(
     )
 
 
-def _deleted_row(kind: Kind, album_or_item_id: int) -> HTMLResponse:
-    """Empty main content (clears #modal-root, which closes the dialog) plus an
-    out-of-band swap that turns the result row into a "Deleted" placeholder."""
-    return HTMLResponse(
-        f'<li id="row-{kind}-{album_or_item_id}" class="result-row row-card is-deleted" hx-swap-oob="true">'
-        '<span class="result-main"><strong>Deleted</strong></span></li>'
+def _deleted_row(request: Request, kind: Kind, album_or_item_id: int) -> HTMLResponse:
+    """Close the dialog (empty #modal-root) and turn the result row into a
+    "Deleted" placeholder."""
+    row_id = f"row-{kind}-{album_or_item_id}"
+    return templates.TemplateResponse(
+        request,
+        "partials/deleted_row.html",
+        {"row_id": row_id},
     )
 
 
@@ -109,7 +111,7 @@ async def delete_modal(
 ):
     album_or_item = get_album_or_item(lib, kind, album_or_item_id)
     if album_or_item is None:
-        return _deleted_row(kind, album_or_item_id)  # already gone: just update the row
+        return _deleted_row(request, kind, album_or_item_id)  # already gone: just update the row
     return _delete_modal(request, kind, album_or_item)
 
 
@@ -130,7 +132,7 @@ async def delete_album_or_item(
             return _delete_modal(
                 request, kind, album_or_item, error=f"Couldn't delete: {error}"
             )
-    return _deleted_row(kind, album_or_item_id)
+    return _deleted_row(request, kind, album_or_item_id)
 
 
 def _note(text: str) -> HTMLResponse:

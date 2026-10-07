@@ -9,7 +9,7 @@
 {#- One button that answers an import prompt. The form posts to the prompt's
     choose_url, and the reply (the next work view) replaces #work-area. -#}
 {% macro choice_button(choose_url, value, label, cls="button-secondary", choice_type="action") %}
-<form hx-post="{{ choose_url }}" hx-target="#work-area">
+<form hx-post="{{ choose_url }}" hx-target="#work-area" hx-disable="find button[type=submit]">
 	<input type="hidden" name="choice_type" value="{{ choice_type }}">
 	<input type="hidden" name="value" value="{{ value }}">
 	<button type="submit"{% if cls %} class="{{ cls }}"{% endif %}>{{ label }}</button>

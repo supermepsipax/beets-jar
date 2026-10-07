@@ -41,7 +41,7 @@
 
 <div class="manual-actions">
 	{% for choice in prompt.choices if choice.short == "e" %}
-	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area">
+	<form class="manual-action" hx-post="{{ choose_url }}" hx-target="#work-area" hx-disable="find button[type=submit]">
 		<input type="hidden" name="choice_type" value="action">
 		<input type="hidden" name="value" value="{{ choice.short }}">
 		<label>Search</label>

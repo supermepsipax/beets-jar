@@ -22,7 +22,7 @@
 
 	<aside id="processes" class="side-panel drawer-right" :class="{ 'is-open': openDrawer === 'right' }">
 		<h2 class="panel-title">Processes</h2>
-		<div data-stream hx-get="/library/stream/processes" hx-trigger="load"></div>
+		<div hx-sse:connect="/library/stream/processes" hx-swap="innerMorph"></div>
 	</aside>
 </div>
 {% endblock %}

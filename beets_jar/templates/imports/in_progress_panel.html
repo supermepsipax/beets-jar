@@ -3,7 +3,7 @@
 	<h3 class="panel-group-name" title="{{ group.session.paths | join(', ') }}">{{ group.name }}</h3>
 
 	{% if group.resume %}
-	<button type="button" class="task-row row-card needs-you"
+	<button type="button" id="resume-{{ group.session.session_id }}" class="task-row row-card needs-you"
 		hx-get="/import/work/{{ group.session.session_id }}" hx-target="#work-area">
 		<span class="task-name">Resume?</span>
 		<span class="task-row-label">Choose →</span>
@@ -12,13 +12,13 @@
 
 	{% for task in group.tasks %}
 	{% if task.open_prompt %}
-	<button type="button" class="task-row row-card needs-you"
+	<button type="button" id="in-progress-{{ task.task_id }}" class="task-row row-card needs-you"
 		hx-get="/import/work/{{ group.session.session_id }}/{{ task.task_id }}" hx-target="#work-area">
 		<span class="task-name">{{ task_name(group.session, task) }}</span>
 		<span class="task-row-label">{{ task_label(task) }}</span>
 	</button>
 	{% else %}
-	<div class="task-row row-card">
+	<div id="in-progress-{{ task.task_id }}" class="task-row row-card">
 		<span class="task-name">{{ task_name(group.session, task) }}</span>
 		<span class="task-row-label">{{ task_label(task) }}</span>
 	</div>

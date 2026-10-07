@@ -14,7 +14,7 @@
 {% block title %}Stop this import?{% endblock %}
 
 {% block content %}
-<form hx-post="{{ choose_url }}" hx-target="#work-area"
+<form hx-post="{{ choose_url }}" hx-target="#work-area" hx-disable="find button[type=submit]"
 	@htmx:finally:request="$el.closest('dialog').close()">
 	<input type="hidden" name="choice_type" value="action">
 	<input type="hidden" name="value" value="{{ value }}">

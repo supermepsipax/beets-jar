@@ -6,8 +6,8 @@
       error   : str | None (set when a delete attempt failed)
 
     The form swaps its response into #modal-root:
-      success -> empty body (the dialog is removed, i.e. closed) plus an
-                 out-of-band <li> that replaces the result row with "Deleted"
+      success -> two partials: an empty one for #modal-root (closes the dialog)
+                 and a "Deleted" <li> that replaces the result row
       failure -> this modal again, with `error` shown
 -#}
 {% extends "modals/base_modal.html" %}
@@ -19,7 +19,9 @@
 <form x-data="{ deleteFiles: false }"
 	hx-delete="/library/rows/{{ kind }}/{{ row.id }}"
 	hx-target="#modal-root"
-	hx-swap="innerHTML">
+	hx-swap="innerHTML"
+	hx-disable="find button[type=submit]"
+	>
 
 	<div class="card-body">
 		<p class="modal-subject">
