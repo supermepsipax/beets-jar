@@ -1,0 +1,22 @@
+{
+    "name": "Beets-Jar",
+    "short_name": "Beets-Jar",
+    "description": "A GUI for beets",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#fffaf0",
+    "theme_color": "#7e203f",
+    "icons": [
+        {
+            "src": "/static/jar-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/jar-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
