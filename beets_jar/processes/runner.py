@@ -162,7 +162,9 @@ class ProcessRunner:
         opts = _build_opts(subcommand, spec)
         status = ProcessStatus.COMPLETED
         failed = 0
-        with _isolated_run():
+        # beets resolves the relative paths stored in the db against a ContextVar,
+        # and this worker thread doesn't inherit the main thread's value
+        with _isolated_run(), self.lib.music_dir_context():
             for query in spec.queries:
                 if self._cancel_current:
                     status = ProcessStatus.CANCELLED

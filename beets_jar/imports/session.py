@@ -108,7 +108,10 @@ class WebImportSession(importer.ImportSession):
         status = SessionStatus.COMPLETED
         error = None
         try:
-            super().run()
+            # Threads don't inherit beets' music dir ContextVar; without it relative
+            # library paths resolve against the server's working directory
+            with self.lib.music_dir_context():
+                super().run()
         except Exception as exception:
             status = SessionStatus.FAILED
             error = str(exception)
