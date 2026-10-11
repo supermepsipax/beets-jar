@@ -8,13 +8,23 @@
 	</button>
 	{% endif %}
 
-	<div class="drop-zone" aria-disabled="true">
+	{% if upload %}
+	<div class="drop-zone" x-data="dropZone('/import/upload', {{ upload.max_bytes }})"
+		:class="{ 'is-over': over, 'is-uploading': busy }"
+		@dragover.prevent="over = true" @dragleave="leave($event)" @drop.prevent="drop($event)">
 		<strong>Drop folders or zips here</strong>
-		<span>Coming soon</span>
+		<span>
+			<label class="drop-pick">choose files<input type="file" multiple hidden @change="pick($event)"></label>
+			·
+			<label class="drop-pick">choose folder<input type="file" webkitdirectory hidden @change="pick($event)"></label>
+		</span>
+		<progress max="1" :value="progress" x-show="busy" x-cloak></progress>
+		<span class="drop-status" x-show="message" x-text="message" x-cloak></span>
 	</div>
+	{% endif %}
 
 	<form class="path-form" hx-post="/import/start" hx-target="#work-area">
-		<label for="import-path">Or import a folder on the server</label>
+		<label for="import-path">Import a folder on the server</label>
 		<div class="manual-action-row">
 			<input id="import-path" name="path" placeholder="/music/incoming/Album" required>
 			<button type="submit">Import</button>

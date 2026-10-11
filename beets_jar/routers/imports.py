@@ -1,10 +1,13 @@
+from fastapi.concurrency import run_in_threadpool
+import shutil
 from urllib.parse import quote
 
 from beets import config
 from beets.library import Library
-from fastapi import APIRouter, Depends, Form, Request, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.sse import EventSourceResponse
+from functools import partial
 
 from beets_jar.dependencies import get_import_registry, get_lib
 from beets_jar.imports import presenters
@@ -12,6 +15,7 @@ from beets_jar.imports.registry import ImportRegistry
 from beets_jar.imports.replies import build_reply
 from beets_jar.imports.session import start_web_import, validate_import_path
 from beets_jar.models.imports import FINISHED_SESSION_STATUSES, ChoiceType
+from beets_jar.services import uploads
 from beets_jar.services.streaming import panel_stream
 from beets_jar.templating import templates
 
@@ -77,6 +81,7 @@ def render_idle(request, import_registry, *, note=None, error=None):
         "work_idle",
         pending=import_registry.pending_count(),
         quick_imports=quick_imports,
+        upload=uploads.upload_settings(),
         note=note,
         error=error,
     )
@@ -245,6 +250,66 @@ async def start_import(
     start_web_import(lib, import_registry, paths=[path])
     return render_idle(request, import_registry, note="Import started.")
 
+@router.post("/import/upload", response_class=HTMLResponse)
+async def upload_import(
+    request: Request,
+    lib: Library = Depends(get_lib),
+    import_registry: ImportRegistry = Depends(get_import_registry),
+):
+    """Files/folders/archives from the drop zone -> a staging folder -> an import.
+
+    The client sends parallel `files` and `paths` fields (same order), `paths`
+    carrying each file's folder-relative path.
+    """
+    settings = uploads.upload_settings()
+    if settings is None:
+        return render_idle(request, import_registry, error="Uploads are turned off.")
+
+    declared = int(request.headers.get("content-length") or 0)
+    if declared > settings.max_bytes + uploads.FORM_SLACK:
+        return render_idle(
+            request,
+            import_registry,
+            error=f"That's over the {settings.max_mb} MB upload limit.",
+        )
+
+    staging = uploads.new_staging_dir(settings)
+    try:
+        async with request.form(
+            max_files=uploads.MAX_FILES, max_fields=uploads.MAX_FILES
+        ) as form:
+            files = form.getlist("files")
+            paths = form.getlist("paths")
+            if len(paths) != len(files):
+                paths = [f.filename or "" for f in files]
+            entries = [(f.file, p) for f, p in zip(files, paths)]
+            count = await run_in_threadpool(
+                uploads.store_upload, staging, entries, settings
+            )
+    except uploads.UploadError as error:
+        shutil.rmtree(staging, ignore_errors=True)
+        return render_idle(request, import_registry, error=str(error))
+    except HTTPException as error:  # Starlette's multipart errors, e.g. too many files
+        shutil.rmtree(staging, ignore_errors=True)
+        return render_idle(
+            request, import_registry, error=f"Upload failed: {error.detail}"
+        )
+
+    if count == 0:
+        shutil.rmtree(staging, ignore_errors=True)
+        return render_idle(
+            request, import_registry, error="Nothing importable in that upload."
+        )
+
+    start_web_import(
+        lib,
+        import_registry,
+        paths=uploads.import_paths(staging),
+        on_finish=partial(uploads.prune_upload, staging),
+    )
+    return render_idle(
+        request, import_registry, note=f"Uploaded {count} files. Import started."
+    )
 
 
 @router.post(
@@ -304,7 +369,9 @@ async def restart_task(
     task = import_registry.get_task(session_id, task_id)
     if task is not None and presenters.can_restart(task):
         import_registry.mark_restarted(session_id, task_id)
-        start_web_import(lib, import_registry, list(task.summary.raw_paths), restart=True)
+        start_web_import(
+            lib, import_registry, paths=list(task.summary.raw_paths), restart=True
+        )
     return Response(status_code=204)  # panels update through the stream
 
 

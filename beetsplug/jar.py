@@ -72,6 +72,11 @@ class JarPlugin(BeetsPlugin):
             "editor": {
                 "keymap": "default",
             },
+            "upload": {
+                "enabled": False,
+                "directory": None,
+                "max_size": 2000,
+            }
         })
         for event_name, phase_name in TASK_PHASES.items():
             self.register_listener(event_name, self._make_handler(phase_name))

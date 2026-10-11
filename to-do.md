@@ -7,7 +7,7 @@
 - [x] Auto prompt toggle so prompts are pushed to the work area
 - [x] Configurable "favorite" paths for quick import
 - [x] Import via library query
-- [ ] Import via file upload in browser
+- [x] Import via file upload in browser
 - [ ] Import with temp config changes (timid, quiet, etc)
 - [x] Import with seeded context (mbid, album/artist title)
 - [ ] Upgrade import for desired bitrate/format

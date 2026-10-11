@@ -1,23 +1,24 @@
 /*{{{ ---------- Theme ---------- */
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono&display=swap');
+
 :root {
 	--bg: #fffaf0;
 	--surface: #f3df91;
 	--surface-hover: #f3df80;
 
-    --text: #202124;
-    --text-muted: #6c7075;
+	--text: #202124;
+	--text-muted: #6c7075;
 
-    --border: #000000;
+	--border: #000000;
 
 	--primary: #7e203f;
 	--primary-hover: #681a34;
-    --on-primary: #ffffff;
+	--on-primary: #ffffff;
 
-    --success: #2b8a3e;
-    --danger: #c92a2a;
+	--success: #2b8a3e;
+	--danger: #c92a2a;
 
-    --radius: 6px;
+	--radius: 6px;
 
 	/* Neo-brutalist building blocks: hard borders, offset shadows */
 	--line: 3px solid var(--border);
@@ -30,32 +31,33 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
-        --bg: #171416;
-        --surface: #252023;
-        --surface-hover: #30292d;
+	:root {
+		--bg: #171416;
+		--surface: #252023;
+		--surface-hover: #30292d;
 
-        --text: #f1ece8;
-        --text-muted: #aaa1a3;
+		--text: #f1ece8;
+		--text-muted: #aaa1a3;
 
-        --border: #080708;
+		--border: #080708;
 
 		--primary: #c65a7e;
 		--primary-hover: #d97999;
-        --on-primary: #111111;
+		--on-primary: #111111;
 
-        --success: #69db7c;
-        --danger: #ff8787;
-    }
+		--success: #69db7c;
+		--danger: #ff8787;
+	}
 }
+
 /* }}} */
 
 /*{{{ ---------- Base ---------- */
 
 body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
 	font-family: 'Space Mono', monospace;
 }
 
@@ -69,13 +71,14 @@ input,
 textarea,
 select {
 	padding: 10px 20px;
-    color: var(--text);
-    background: var(--bg);
+	color: var(--text);
+	background: var(--bg);
 	font-weight: bold;
 	border: var(--line);
-    border-radius: var(--radius);
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -85,17 +88,20 @@ select:focus {
 	box-shadow: var(--shadow-lg);
 	transform: translate(-1px, -1px);
 }
+
 /* }}} */
 
 /*{{{ ---------- Components ---------- */
 a {
 	color: var(--text);
-    background: var(--surface);
+	background: var(--surface);
 	border-radius: var(--radius);
 }
+
 a:hover {
-    background: var(--surface-hover);
+	background: var(--surface-hover);
 }
+
 button {
 	display: inline-block;
 	padding: 10px 20px;
@@ -104,10 +110,10 @@ button {
 	text-decoration: none;
 	font-weight: bold;
 	border: var(--line);
-    border-radius: var(--radius);
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	transition: all 0.2s ease;
-	cursor:pointer;
+	cursor: pointer;
 }
 
 button:active {
@@ -116,7 +122,7 @@ button:active {
 }
 
 button:hover {
-    background: var(--bg);
+	background: var(--bg);
 	color: var(--primary);
 	border: 3px solid var(--primary);
 	box-shadow: none;
@@ -145,24 +151,31 @@ input[type="checkbox"] {
 	box-shadow: var(--shadow-sm);
 	cursor: pointer;
 }
-input[type="checkbox"]:checked { background: var(--primary); }
+
+input[type="checkbox"]:checked {
+	background: var(--primary);
+}
+
 input[type="checkbox"]:checked::before {
 	content: "";
 	width: 8px;
 	height: 8px;
 	background: var(--on-primary);
 }
+
 input[type="checkbox"]:indeterminate::before {
 	content: "";
 	width: 10px;
 	height: 3px;
 	background: var(--text);
 }
+
 input[type="checkbox"]:focus {
 	transform: none;
 	border-color: var(--border);
 	box-shadow: var(--shadow-sm);
 }
+
 input[type="checkbox"]:focus-visible {
 	outline: 3px solid var(--primary);
 	outline-offset: 2px;
@@ -200,6 +213,7 @@ input[type="checkbox"]:focus-visible {
 	border: 0;
 	box-shadow: none;
 }
+
 .toggle {
 	position: relative;
 	display: inline-flex;
@@ -214,12 +228,21 @@ input[type="checkbox"]:focus-visible {
 	user-select: none;
 	transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
-.toggle:hover  { box-shadow: var(--shadow-sm); }
-.toggle:active { transform: translate(1px, 1px); box-shadow: none; }
+
+.toggle:hover {
+	box-shadow: var(--shadow-sm);
+}
+
+.toggle:active {
+	transform: translate(1px, 1px);
+	box-shadow: none;
+}
+
 .toggle:has(input:focus-visible) {
 	outline: 3px solid var(--primary);
 	outline-offset: 2px;
 }
+
 .toggle:has(input:disabled) {
 	opacity: 0.5;
 	cursor: not-allowed;
@@ -242,18 +265,30 @@ input[type="checkbox"]:focus-visible {
 	white-space: nowrap;
 	transition: background 0.15s ease, color 0.15s ease;
 }
-.toggle-seg + .toggle-seg { border-left: var(--line); }
 
-.toggle input:checked ~ .toggle-on,
-.toggle input:not(:checked) ~ .toggle-off,
+.toggle-seg+.toggle-seg {
+	border-left: var(--line);
+}
+
+.toggle input:checked~.toggle-on,
+.toggle input:not(:checked)~.toggle-off,
 .segmented .toggle-seg:has(input:checked) {
 	background: var(--primary);
 	color: var(--on-primary);
 }
-.segmented .toggle-seg { cursor: pointer; }
 
-.toggle-sm { box-shadow: var(--shadow-sm); }
-.toggle-sm .toggle-seg { padding: 2px 8px; font-size: 0.8rem; }
+.segmented .toggle-seg {
+	cursor: pointer;
+}
+
+.toggle-sm {
+	box-shadow: var(--shadow-sm);
+}
+
+.toggle-sm .toggle-seg {
+	padding: 2px 8px;
+	font-size: 0.8rem;
+}
 
 /* A boxed panel with a coloured title bar: work-area prompts, modals, the config editor */
 .card {
@@ -263,6 +298,7 @@ input[type="checkbox"]:focus-visible {
 	box-shadow: var(--shadow-lg);
 	overflow: hidden;
 }
+
 .card-header {
 	display: flex;
 	align-items: center;
@@ -273,19 +309,30 @@ input[type="checkbox"]:focus-visible {
 	color: var(--on-primary);
 	border-bottom: var(--line);
 }
-.card-header form { margin: 0; }
+
+.card-header form {
+	margin: 0;
+}
+
 .card-title {
 	display: block;
 	font-size: 1rem;
 }
+
 .card-subtitle {
 	display: block;
 	margin-top: 2px;
 	font-size: 0.8rem;
 	opacity: 0.8;
 }
-.card-body { padding: 20px; }
-.card-body > :last-child { margin-bottom: 0; }
+
+.card-body {
+	padding: 20px;
+}
+
+.card-body> :last-child {
+	margin-bottom: 0;
+}
 
 /* One entry in a list: a library result, a process, an import task */
 .row-card {
@@ -295,6 +342,7 @@ input[type="checkbox"]:focus-visible {
 	border: var(--line);
 	border-radius: var(--radius);
 }
+
 /* Small buttons/tags at the end of a row */
 .row-actions {
 	display: flex;
@@ -315,10 +363,12 @@ input[type="checkbox"]:focus-visible {
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
+
 .stat-number {
 	font-size: 1.2rem;
 	font-weight: bolder;
 }
+
 /* }}} */
 
 /*{{{ ---------- Modal ---------- */
@@ -330,7 +380,11 @@ input[type="checkbox"]:focus-visible {
 	overflow: auto;
 	color: var(--text);
 }
-.modal::backdrop { background: var(--scrim); }
+
+.modal::backdrop {
+	background: var(--scrim);
+}
+
 .modal .card-header {
 	position: sticky;
 	top: 0;
@@ -344,9 +398,15 @@ input[type="checkbox"]:focus-visible {
 	padding: 0 20px 20px;
 }
 
-.modal-subject { margin: 0 0 20px; }
+.modal-subject {
+	margin: 0 0 20px;
+}
+
 .modal-subject strong,
-.modal-subject span { display: block; }
+.modal-subject span {
+	display: block;
+}
+
 .modal-subject span {
 	margin-top: 2px;
 	font-size: 0.85rem;
@@ -360,17 +420,22 @@ input[type="checkbox"]:focus-visible {
 	gap: 12px;
 	font-weight: bold;
 }
+
 .modal-hint {
 	margin: 12px 0 0;
 	font-size: 0.85rem;
 	color: var(--text-muted);
 }
-.modal .work-error { margin: 16px 0 0; }
+
+.modal .work-error {
+	margin: 16px 0 0;
+}
+
 /* }}} */
 
 /*{{{--------- Navigation Bar ---------- */
 nav {
-    border-bottom: var(--line-dashed);
+	border-bottom: var(--line-dashed);
 	border-radius: var(--radius);
 	background: var(--surface);
 	display: grid;
@@ -387,12 +452,14 @@ nav {
 	gap: 24px;
 	padding-bottom: 14px;
 }
+
 .nav-link {
 	font-size: 1.15rem;
 	font-weight: normal;
 	text-decoration: none;
 	text-underline-offset: 6px;
 }
+
 .nav-link[aria-current="page"] {
 	font-weight: bold;
 	text-decoration: underline 3px var(--primary);
@@ -410,6 +477,7 @@ nav {
 		grid-template-columns: 1fr auto;
 		padding: 0 16px 12px;
 	}
+
 	.nav-links {
 		grid-column: 1 / -1;
 		grid-row: 2;
@@ -433,6 +501,7 @@ nav {
 	flex-shrink: 0;
 	object-fit: cover;
 }
+
 /* }}} */
 
 /* {{{ --------- Page layout (library + import) --------- */
@@ -441,15 +510,22 @@ nav {
 .split-layout {
 	display: grid;
 	grid-template-columns: minmax(240px, var(--panel-width)) minmax(0, 1fr) minmax(240px, var(--panel-width));
-	min-height: calc(100vh - 120px); /* roughly the nav height; adjust to taste */
+	min-height: calc(100vh - 120px);
+	/* roughly the nav height; adjust to taste */
 }
 
 .side-panel {
 	padding: 16px;
 	overflow-y: auto;
 }
-.drawer-left  { border-right: var(--line-dashed); }
-.drawer-right { border-left: var(--line-dashed); }
+
+.drawer-left {
+	border-right: var(--line-dashed);
+}
+
+.drawer-right {
+	border-left: var(--line-dashed);
+}
 
 #work-area {
 	padding: 24px;
@@ -469,7 +545,11 @@ nav {
 	gap: 8px;
 	margin-bottom: 12px;
 }
-.panel-head .panel-title { margin: 0; }
+
+.panel-head .panel-title {
+	margin: 0;
+}
+
 .panel-empty {
 	color: var(--text-muted);
 	font-weight: bold;
@@ -484,15 +564,35 @@ nav {
 	margin: 0 auto;
 }
 
+.drop-zone.is-over {
+	border: var(--line);
+}
+
+.drop-zone.is-uploading {
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.drop-zone progress {
+	width: min(320px, 100%);
+}
+
+.drop-pick {
+	text-decoration: underline;
+	cursor: pointer;
+}
+
 .drawer-toolbar,
 .drawer-backdrop {
-	display: none; /* mobile only, see media query */
+	display: none;
+	/* mobile only, see media query */
 }
 
 @media (max-width: 900px) {
 	.split-layout {
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: auto 1fr; /* toolbar keeps its height; work area takes the rest */
+		grid-template-rows: auto 1fr;
+		/* toolbar keeps its height; work area takes the rest */
 	}
 
 	.drawer-toolbar {
@@ -520,22 +620,27 @@ nav {
 		background: var(--bg);
 		transition: transform 0.2s ease;
 	}
+
 	.drawer-left {
 		left: 0;
 		transform: translateX(-105%);
 		border-right-style: solid;
 	}
+
 	.drawer-right {
 		right: 0;
 		transform: translateX(105%);
 		border-left-style: solid;
 	}
+
 	.side-panel.is-open {
 		transform: none;
 		box-shadow: var(--shadow-lg);
 	}
 
-	#work-area { padding: 16px; }
+	#work-area {
+		padding: 16px;
+	}
 }
 
 /* A dot on the drawer button when something in the left panel needs the user */
@@ -550,6 +655,7 @@ nav {
 	border: 2px solid var(--border);
 	border-radius: 50%;
 }
+
 /* }}} */
 
 /* {{{ --------- Library Page --------- */
@@ -557,15 +663,18 @@ nav {
 .library-results {
 	width: 100%;
 }
+
 .library-query-row {
 	display: flex;
 	align-items: stretch;
 	gap: 16px;
 }
+
 .library-query-row input[type="search"] {
 	flex: 1 1 auto;
 	min-width: 0;
 }
+
 .library-query-row .toggle-seg {
 	display: flex;
 	align-items: center;
@@ -578,25 +687,37 @@ nav {
 	gap: 12px;
 	margin-bottom: 16px;
 }
-.results-process { margin-left: auto; }
+
+.results-process {
+	margin-left: auto;
+}
+
 .results-note {
 	font-size: 0.85rem;
 	font-weight: bold;
 	color: var(--text-muted);
 }
-.results-note:empty { display: none; }
+
+.results-note:empty {
+	display: none;
+}
 
 .result-list {
 	margin: 0;
 	padding: 0;
 	list-style: none;
 }
+
 .result-row {
 	display: flex;
 	align-items: center;
 	gap: 14px;
 }
-.result-row:has(input[name="ids"]:checked) { background: var(--surface); }
+
+.result-row:has(input[name="ids"]:checked) {
+	background: var(--surface);
+}
+
 .result-row.is-deleted {
 	color: var(--text-muted);
 	border-style: dashed;
@@ -608,21 +729,25 @@ nav {
 	flex-direction: column;
 	min-width: 0;
 }
+
 .result-main strong,
 .result-main span {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+
 .result-main span {
 	font-size: 0.8rem;
 	color: var(--text-muted);
 }
+
 .result-year {
 	flex-shrink: 0;
 	font-weight: bold;
 	color: var(--text-muted);
 }
+
 .help-dot {
 	display: inline-grid;
 	place-content: center;
@@ -635,7 +760,10 @@ nav {
 	cursor: help;
 }
 
-.plugin-card { margin-bottom: 20px; }
+.plugin-card {
+	margin-bottom: 20px;
+}
+
 .plugin-head {
 	display: flex;
 	align-items: center;
@@ -643,13 +771,17 @@ nav {
 	gap: 8px;
 	margin-bottom: 8px;
 }
+
 .plugin-name {
 	margin: 0;
 	font-size: 1rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-.plugin-card:has(.plugin-head input:checked) .plugin-name { color: var(--primary); }
+
+.plugin-card:has(.plugin-head input:checked) .plugin-name {
+	color: var(--primary);
+}
 
 .plugin-commands {
 	display: flex;
@@ -657,7 +789,10 @@ nav {
 	box-sizing: border-box;
 	margin-bottom: 8px;
 }
-.plugin-commands .toggle-seg { flex: 1 1 0; }
+
+.plugin-commands .toggle-seg {
+	flex: 1 1 0;
+}
 
 .settings-bar {
 	display: flex;
@@ -669,6 +804,7 @@ nav {
 	font-size: 0.85rem;
 	box-shadow: none;
 }
+
 .settings-bar:hover {
 	background: var(--surface-hover);
 	color: var(--text);
@@ -685,11 +821,13 @@ nav {
 	border: var(--line);
 	border-radius: var(--radius);
 }
+
 .plugin-options {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
 }
+
 .plugin-option {
 	display: flex;
 	align-items: center;
@@ -699,7 +837,10 @@ nav {
 	text-transform: capitalize;
 }
 
-.process-row { font-weight: bold; }
+.process-row {
+	font-weight: bold;
+}
+
 .process-head {
 	display: flex;
 	align-items: center;
@@ -707,6 +848,7 @@ nav {
 	gap: 8px;
 	margin-bottom: 8px;
 }
+
 .process-query {
 	min-width: 0;
 	overflow: hidden;
@@ -715,6 +857,7 @@ nav {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+
 .process-foot {
 	display: flex;
 	align-items: center;
@@ -729,7 +872,8 @@ nav {
 	border: var(--line);
 	border-radius: var(--radius);
 }
-.progress > span {
+
+.progress>span {
 	display: block;
 	height: 100%;
 	background: var(--success);
@@ -737,19 +881,29 @@ nav {
 }
 
 @media (max-width: 600px) {
-	.result-year { display: none; }
+	.result-year {
+		display: none;
+	}
 }
 
 @media (max-width: 900px) {
-	.library-query-row { flex-wrap: wrap; }
-	.library-query-row input[type="search"] { flex-basis: 100%; }
+	.library-query-row {
+		flex-wrap: wrap;
+	}
+
+	.library-query-row input[type="search"] {
+		flex-basis: 100%;
+	}
 }
+
 /* }}} */
 
 /* {{{--------- Import Page --------- */
 /* ---------- Side panel rows ---------- */
 /* A titled group of rows in a side panel: an import session, a plugin's processes */
-.panel-group { margin-bottom: 20px; }
+.panel-group {
+	margin-bottom: 20px;
+}
 
 .panel-group-head {
 	display: flex;
@@ -800,7 +954,11 @@ nav {
 	border-color: var(--border);
 	box-shadow: var(--shadow);
 }
-.task-row.needs-you .task-row-label { color: inherit; }
+
+.task-row.needs-you .task-row-label {
+	color: inherit;
+}
+
 .task-row.needs-you:hover {
 	background: var(--bg);
 	color: var(--primary);
@@ -816,10 +974,26 @@ nav {
 	border: 2px solid var(--border);
 	border-radius: var(--radius);
 }
-.tag-success { background: var(--success); color: var(--on-primary); }
-.tag-muted   { background: var(--surface-hover); color: var(--text-muted); }
-.tag-danger  { background: var(--danger); color: var(--on-primary); }
-.tag-active  { background: var(--primary); color: var(--on-primary); }
+
+.tag-success {
+	background: var(--success);
+	color: var(--on-primary);
+}
+
+.tag-muted {
+	background: var(--surface-hover);
+	color: var(--text-muted);
+}
+
+.tag-danger {
+	background: var(--danger);
+	color: var(--on-primary);
+}
+
+.tag-active {
+	background: var(--primary);
+	color: var(--on-primary);
+}
 
 .icon-button {
 	padding: 2px 10px;
@@ -832,14 +1006,17 @@ nav {
 	background: var(--surface);
 	color: var(--text);
 }
+
 .button-danger {
 	background: var(--danger);
 	color: var(--on-primary);
 }
+
 .button-danger:hover {
 	color: var(--danger);
 	border-color: var(--danger);
 }
+
 .button-block {
 	display: block;
 	width: 100%;
@@ -862,6 +1039,7 @@ nav {
 	padding-top: 20px;
 	border-top: var(--line);
 }
+
 .manual-action label,
 .path-form label,
 .quick-import label {
@@ -869,16 +1047,19 @@ nav {
 	margin-bottom: 6px;
 	font-weight: bold;
 }
+
 .manual-action-row {
 	display: flex;
 	align-items: center;
 	flex-wrap: nowrap;
 	gap: 10px;
 }
+
 .manual-action-row input {
 	flex: 1 1 200px;
 	min-width: 0;
 }
+
 .no-results {
 	font-weight: bold;
 }
@@ -889,8 +1070,14 @@ nav {
 	gap: 12px;
 	margin-bottom: 20px;
 }
-.work-actions form { margin: 0; }
-.work-actions-end { margin-left: auto; }
+
+.work-actions form {
+	margin: 0;
+}
+
+.work-actions-end {
+	margin-left: auto;
+}
 
 .work-note,
 .work-error {
@@ -900,11 +1087,20 @@ nav {
 	border: var(--line);
 	border-radius: var(--radius);
 }
-.work-note  { background: var(--bg); }
-.work-error { background: var(--danger); color: var(--on-primary); }
+
+.work-note {
+	background: var(--bg);
+}
+
+.work-error {
+	background: var(--danger);
+	color: var(--on-primary);
+}
 
 /* ---------- Idle view ---------- */
-.work-pending { align-self: flex-start; }
+.work-pending {
+	align-self: flex-start;
+}
 
 .drop-zone {
 	display: flex;
@@ -917,8 +1113,15 @@ nav {
 	border: var(--line-dashed);
 	border-radius: var(--radius);
 }
-.drop-zone strong { font-size: 1.3rem; }
-.drop-zone span   { color: var(--text-muted); font-size: 0.85rem; }
+
+.drop-zone strong {
+	font-size: 1.3rem;
+}
+
+.drop-zone span {
+	color: var(--text-muted);
+	font-size: 0.85rem;
+}
 
 /* ---------- Waiting view ---------- */
 .work-waiting-text {
@@ -941,7 +1144,8 @@ nav {
    list then scrolls inside that box, however many tracks the album has. */
 #candidate-detail {
 	contain: size;
-	min-height: 22rem; /* room for a few tracks even with a single candidate */
+	min-height: 22rem;
+	/* room for a few tracks even with a single candidate */
 }
 
 .candidate-list {
@@ -949,7 +1153,10 @@ nav {
 	padding: 0;
 	list-style: none;
 }
-.candidate-list li { margin-bottom: 10px; }
+
+.candidate-list li {
+	margin-bottom: 10px;
+}
 
 /* Buttons for semantics/keyboard, but styled as quiet cards */
 .candidate-row {
@@ -963,11 +1170,13 @@ nav {
 	color: var(--text);
 	box-shadow: none;
 }
+
 .candidate-row:hover {
 	background: var(--surface-hover);
 	color: var(--text);
 	border-color: var(--border);
 }
+
 .candidate-row.is-selected {
 	border-color: var(--primary);
 	box-shadow: var(--shadow);
@@ -978,17 +1187,20 @@ nav {
 	min-width: 3.5em;
 	font-size: 1.1rem;
 }
+
 .candidate-name {
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 }
+
 .candidate-name strong,
 .candidate-name span {
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 }
+
 .candidate-name span {
 	font-size: 0.8rem;
 	color: var(--text-muted);
@@ -1004,7 +1216,10 @@ nav {
 	border: var(--line);
 	border-radius: var(--radius);
 }
-.candidate-detail > * { flex-shrink: 0; }
+
+.candidate-detail>* {
+	flex-shrink: 0;
+}
 
 .candidate-detail-head {
 	display: flex;
@@ -1013,10 +1228,28 @@ nav {
 	gap: 16px;
 	margin-bottom: 12px;
 }
-.candidate-detail-title  { margin: 0; font-size: 1.2rem; }
-.candidate-detail-artist { margin: 2px 0 0; font-weight: bold; }
-.candidate-detail-meta   { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-muted); }
-.candidate-detail-note   { margin: 12px 0 0; font-weight: bold; color: var(--danger); }
+
+.candidate-detail-title {
+	margin: 0;
+	font-size: 1.2rem;
+}
+
+.candidate-detail-artist {
+	margin: 2px 0 0;
+	font-weight: bold;
+}
+
+.candidate-detail-meta {
+	margin: 4px 0 0;
+	font-size: 0.85rem;
+	color: var(--text-muted);
+}
+
+.candidate-detail-note {
+	margin: 12px 0 0;
+	font-weight: bold;
+	color: var(--danger);
+}
 
 /* .stat-block, a little roomier, with a bigger number */
 .match-pct {
@@ -1024,11 +1257,15 @@ nav {
 	padding: 8px 12px;
 	font-size: 0.75rem;
 }
-.match-pct .stat-number { font-size: 1.5rem; }
+
+.match-pct .stat-number {
+	font-size: 1.5rem;
+}
 
 .track-list {
 	/* Fill whatever height is left between the header and Apply, then scroll */
-	flex: 1 1 auto; /* declared after `.candidate-detail > *`, so this wins */
+	flex: 1 1 auto;
+	/* declared after `.candidate-detail > *`, so this wins */
 	min-height: 0;
 	overflow-y: auto;
 	margin: 0;
@@ -1038,22 +1275,26 @@ nav {
 	border-bottom: var(--line);
 	scrollbar-color: var(--border) transparent;
 }
+
 .track-list li {
 	display: flex;
 	gap: 12px;
 	padding: 6px 0;
 	border-bottom: 1px solid var(--surface-hover);
 }
+
 .track-num {
 	flex-shrink: 0;
 	min-width: 2ch;
 	text-align: right;
 	color: var(--text-muted);
 }
+
 .track-title small {
 	display: block;
 	color: var(--text-muted);
 }
+
 .track-list li.is-changed .track-title::before {
 	content: "≠ ";
 	color: var(--primary);
@@ -1061,27 +1302,51 @@ nav {
 }
 
 /* ---------- Duplicate / resume prompts ---------- */
-.duplicate-prompt h3 { margin-top: 0; }
+.duplicate-prompt h3 {
+	margin-top: 0;
+}
+
 .duplicate-summary {
 	margin: 0 0 20px;
 	display: grid;
 	grid-template-columns: max-content 1fr;
 	gap: 6px 16px;
 }
-.duplicate-summary dt { font-weight: bold; }
-.duplicate-summary dd { margin: 0; white-space: pre-line; }
 
-.resume-prompt p { margin: 0 0 20px; }
+.duplicate-summary dt {
+	font-weight: bold;
+}
+
+.duplicate-summary dd {
+	margin: 0;
+	white-space: pre-line;
+}
+
+.resume-prompt p {
+	margin: 0 0 20px;
+}
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
-	.candidate-split { grid-template-columns: minmax(0, 1fr); }
+	.candidate-split {
+		grid-template-columns: minmax(0, 1fr);
+	}
 
 	/* Stacked: no list beside it to match, so cap the track list instead */
-	#candidate-detail { contain: none; min-height: 0; }
-	.candidate-detail { height: auto; }
-	.track-list { max-height: 50vh; }
+	#candidate-detail {
+		contain: none;
+		min-height: 0;
+	}
+
+	.candidate-detail {
+		height: auto;
+	}
+
+	.track-list {
+		max-height: 50vh;
+	}
 }
+
 /* }}} */
 
 /* {{{ --------- Configuration Page --------- */
@@ -1097,7 +1362,10 @@ nav {
 	gap: 12px;
 	min-width: 0;
 }
-.config-bar button { padding: 6px 16px; }
+
+.config-bar button {
+	padding: 6px 16px;
+}
 
 .config-status {
 	font-size: 0.85rem;
@@ -1106,7 +1374,11 @@ nav {
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
-.config-status:empty { display: none; }
+
+.config-status:empty {
+	display: none;
+}
+
 .config-status.is-error {
 	padding: 2px 8px;
 	white-space: normal;
@@ -1130,22 +1402,33 @@ nav {
 	box-shadow: none;
 	resize: vertical;
 }
-.config-card textarea:focus { transform: none; box-shadow: none; }
+
+.config-card textarea:focus {
+	transform: none;
+	box-shadow: none;
+}
 
 /* While CodeMirror loads: keep the textarea's space (no layout jump) but not
    its content, on the editor's background colour. */
 .config-card.is-loading textarea {
 	visibility: hidden;
 }
+
 .config-card.is-loading {
 	background: var(--bg);
 }
+
 /* Without JS the editor never loads: show the plain textarea */
 @media (scripting: none) {
-	.config-card.is-loading textarea { visibility: visible; }
+	.config-card.is-loading textarea {
+		visibility: visible;
+	}
 }
 
 @media (max-width: 900px) {
-	.config-page { padding: 16px; }
+	.config-page {
+		padding: 16px;
+	}
 }
+
 /* }}} */

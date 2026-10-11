@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Callable
 from itertools import chain
 from queue import Queue
 from typing import TYPE_CHECKING, Literal
@@ -17,7 +18,6 @@ from beets.autotag import (
     tag_album,
     tag_item,
 )
-
 from beets.importer import DuplicateAction, SingletonImportTask
 from beets.library import Album
 from beets.util import PromptChoice, displayable_path
@@ -55,6 +55,7 @@ def ensure_task_id(task) -> str:
         task_id = task.task_id = uuid4().hex
     return task_id
 
+
 class _LocalConfig:
     """Per-session import config. Reads fall through to the global `config["import"]`
     except keys set on this session; writes (overrides, and beets' own implied
@@ -73,6 +74,7 @@ class _LocalConfig:
     def __setitem__(self, key, value):
         self._local[key] = value
         self._keys.add(key)
+
 
 class WebImportSession(importer.ImportSession):
     """
@@ -127,7 +129,9 @@ class WebImportSession(importer.ImportSession):
             try:
                 plugins.send("cli_exit", lib=self.lib)
             except Exception:
-                log.exception(f"cli_exit listeners failed for session {self.session_id}")
+                log.exception(
+                    f"cli_exit listeners failed for session {self.session_id}"
+                )
 
     def abort(self) -> None:
         """Stop the whole import. Called from the Abort prompt choice."""
@@ -192,15 +196,22 @@ class WebImportSession(importer.ImportSession):
 
         while True:
             # The reply's choice is a candidate match or a PromptChoice (see imports/replies.py)
-            web_choice: WebChoice = self._ask("candidate", task, self._get_choices(task))
+            web_choice: WebChoice = self._ask(
+                "candidate", task, self._get_choices(task)
+            )
             if isinstance(web_choice.choice, match_type):
                 return web_choice.choice
 
-            if isinstance(web_choice.choice, PromptChoice) and web_choice.choice.callback:
+            if (
+                isinstance(web_choice.choice, PromptChoice)
+                and web_choice.choice.callback
+            ):
                 result = self._run_choice_callback(task, web_choice)
                 if isinstance(result, importer.Action):
                     return result
-                if isinstance(result, Proposal):  # a new search: ask again with its candidates
+                if isinstance(
+                    result, Proposal
+                ):  # a new search: ask again with its candidates
                     task.candidates = result.candidates
                     task.rec = result.recommendation
             # Anything else (e.g. a plugin choice without a callback): ask again
@@ -255,8 +266,12 @@ class WebImportSession(importer.ImportSession):
         ]
         if task.is_album:
             choices += [
-                PromptChoice("t", "as Tracks", lambda session, task: importer.Action.TRACKS),
-                PromptChoice("g", "Group albums", lambda session, task: importer.Action.ALBUMS),
+                PromptChoice(
+                    "t", "as Tracks", lambda session, task: importer.Action.TRACKS
+                ),
+                PromptChoice(
+                    "g", "Group albums", lambda session, task: importer.Action.ALBUMS
+                ),
             ]
         choices += [
             # TODO: introduce beets.autotag.Candidates to remove these ignores
@@ -270,7 +285,9 @@ class WebImportSession(importer.ImportSession):
         plugin_choices = chain.from_iterable(
             plugins.send("before_choose_candidate", session=self, task=task)
         )
-        taken = {"a"} | {choice.short for choice in choices}  # "a" is Apply, chosen by candidate
+        taken = {"a"} | {
+            choice.short for choice in choices
+        }  # "a" is Apply, chosen by candidate
         for plugin_choice in plugin_choices:
             if plugin_choice.short in taken:
                 log.warning(
@@ -294,7 +311,10 @@ class WebImportSession(importer.ImportSession):
         if action is DuplicateAction.SKIP:
             import_event_bus.emit(
                 TaskFinished(
-                    self.session_id, ensure_task_id(task), TaskOutcome.SKIPPED, "duplicate"
+                    self.session_id,
+                    ensure_task_id(task),
+                    TaskOutcome.SKIPPED,
+                    "duplicate",
                 )
             )
         elif action is DuplicateAction.MERGE:
@@ -323,11 +343,15 @@ class WebImportSession(importer.ImportSession):
         # informed decision.
         old_summaries = []
         for duplicate in found_duplicates:
-            items = list(duplicate.items()) if isinstance(duplicate, Album) else [duplicate]
+            items = (
+                list(duplicate.items()) if isinstance(duplicate, Album) else [duplicate]
+            )
             old_summaries.append(self._report_item_summary("Old", items, task.is_album))
         duplicate_summary = {
             "old": old_summaries,
-            "new": self._report_item_summary("New", task.imported_items(), task.is_album),
+            "new": self._report_item_summary(
+                "New", task.imported_items(), task.is_album
+            ),
         }
 
         web_choice: WebChoice = self._ask(
@@ -357,7 +381,16 @@ def validate_import_path(raw_path: str) -> str | None:
     return path
 
 
-def start_web_import(lib, import_registry,  *, paths = None, query = None, restart: bool = False, seed_id: str = "") -> WebImportSession:
+def start_web_import(
+    lib,
+    import_registry,
+    *,
+    paths=None,
+    query=None,
+    restart: bool = False,
+    seed_id: str = "",
+    on_finish: Callable[[], None] | None = None
+) -> WebImportSession:
     """Create a session, register it in the registry right away, and run it in a thread.
 
     Must be called from the event loop (i.e. from an endpoint), because it
@@ -365,18 +398,26 @@ def start_web_import(lib, import_registry,  *, paths = None, query = None, resta
     """
 
     session = WebImportSession(
-        lib=lib, paths=paths, loghandler=None, query=query, restart=restart, seed_id=seed_id
+        lib=lib,
+        paths=paths,
+        loghandler=None,
+        query=query,
+        restart=restart,
+        seed_id=seed_id,
     )
 
     if paths is not None:
         paths = tuple(displayable_path(path) for path in session.paths)
 
-    import_registry.apply(
-        SessionStarted(
-            session.session_id, paths, query
-        )
-    )
-    threading.Thread(target=session.run, daemon=True).start()
+    import_registry.apply(SessionStarted(session.session_id, paths, query))
+    def run():
+        try:
+            session.run()
+        finally:
+            if on_finish is not None:
+                on_finish()
+
+    threading.Thread(target=run, daemon=True).start()
     return session
 
 

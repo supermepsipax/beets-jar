@@ -4,6 +4,7 @@
 
 {% block content %}
 {% from "macros/controls.html" import toggle, drawer_toolbar %}
+<script src="/static/upload.js"></script>
 <script>
 	// Page state for the import layout: mobile drawers + auto mode.
 	// Auto mode pulls the next prompt into the work area whenever it is idle and
@@ -29,15 +30,16 @@
 				if (!document.querySelector('#work-area [data-work="idle"]')) return;
 				if (!document.querySelector("#in-progress-rows .needs-you")) return;
 				this.loading = true;
-				Promise.resolve(htmx.ajax("GET", "/import/work", { target: "#work-area" }))
-					.catch(() => {})
-					.finally(() => { this.loading = false; });
+				Promise.resolve(htmx.ajax("GET", "/import/work", {target: "#work-area"}))
+					.catch(() => { })
+					.finally(() => {this.loading = false;});
 			},
 		};
 	}
 </script>
 
-<div class="split-layout" x-data="importPage()" @keydown.escape.window="openDrawer = null">
+<div class="split-layout" x-data="importPage()" @keydown.escape.window="openDrawer = null" @dragover.window.prevent
+	@drop.window.prevent>
 	{{ drawer_toolbar("☰ In progress", "Finished") }}
 
 	{# Picking a prompt on mobile closes the drawer so the work area shows #}
@@ -45,9 +47,11 @@
 		@click="if ($event.target.closest('.needs-you')) openDrawer = null">
 		<div class="panel-head">
 			<h2 class="panel-title">In Progress</h2>
-			{{ toggle("auto", on="Auto", off="Manual", label="Show prompts automatically", attrs='x-model="auto"', cls="toggle-sm") }}
+			{{ toggle("auto", on="Auto", off="Manual", label="Show prompts automatically", attrs='x-model="auto"',
+			cls="toggle-sm") }}
 		</div>
-		<div id="in-progress-rows" hx-sse:connect="/import/stream/in-progress" hx-swap="innerMorph" @htmx:sse:after:message="pull()"></div>
+		<div id="in-progress-rows" hx-sse:connect="/import/stream/in-progress" hx-swap="innerMorph"
+			@htmx:sse:after:message="pull()"></div>
 	</aside>
 
 	<section id="work-area" hx-get="{{ work_url }}" hx-trigger="load"></section>

@@ -112,13 +112,13 @@ If you edit the service file itself, run `systemctl --user daemon-reload` before
 2. Basic library queries
 3. More advanced configuration editing (better editor + autocomplete suggestions)
 4. Import via RESTful API
-5. Select, edit, and run plugins on selected library queries
-6. User input when autotagger requires intervention
+5. File upload + import in browser
+6. Select, edit, and run plugins on selected library queries
+7. User input when autotagger requires intervention
 
 ## Planned Features
 1. Import via API can also communicate choices to the user, and a user's choice to the application
 2. Watchable import folder for auto-ingestion
-3. File upload + import in browser
 
 ## Not Planned Features
 1. Music server capabilities (already covered by so many better plugins)
