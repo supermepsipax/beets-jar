@@ -24,7 +24,7 @@
 	{% endif %}
 
 	<form class="path-form" hx-post="/import/start" hx-target="#work-area">
-		<label for="import-path">Import a folder on the server</label>
+		<label for="import-path">{% if upload %}Or import{% else %}Import{% endif %} a folder on the server</label>
 		<div class="manual-action-row">
 			<input id="import-path" name="path" placeholder="/music/incoming/Album" required>
 			<button type="submit">Import</button>
